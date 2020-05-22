@@ -1,0 +1,501 @@
+#===============================================================================
+# ReID.rogue
+# 2020-05-17 by Abe Pralle
+#===============================================================================
+$define VERSION "1.0"
+$define DATE    "May 21, 2020"
+
+ReID()
+
+class ReID
+  PROPERTIES
+    is_exact            : Logical
+    excluded            = String[][ "Changes.txt" ]
+    changes             : Changes
+
+  METHODS
+    method init
+      local args = System.command_line_arguments.cloned
+      local parsing_exclusions = false
+      forEach (arg in rewriter=args.rewriter)
+        if (arg.begins_with("--"))
+          which (arg)
+            case "--exact"
+              is_exact = true
+            case "--exclude"
+              parsing_exclusions = true
+            others
+              println( "Invalid option: " + arg )
+              print_usage
+              System.exit 1
+          endWhich
+        elseIf (parsing_exclusions)
+          excluded.add( arg )
+        else
+          rewriter.write( arg )
+        endIf
+      endForEach
+
+      which (args.count)
+        case 0
+          print_usage
+          System.exit 1
+
+        case 1
+          changes = Changes( File(args.first) )
+          changes.preview_and_apply
+
+        others
+          if (args.count == 2) args.add( "**" )
+
+          local filepaths = Set<<String>>()
+          forEach (pattern in args.subset(2))
+            if (pattern.contains('*') or pattern.contains('?'))
+              forEach (filepath in File.listing(".",pattern,&ignore_hidden))
+                contingent
+                  necessary (not File.matches_wildcard_pattern(filepath,forEach in excluded))
+                  filepaths.add( filepath )
+                endContingent
+              endForEach
+            else
+              filepaths.add( pattern )
+            endIf
+          endForEach
+
+          collect_changes( args[0], args[1], filepaths->String[] )
+      endWhich
+
+    method print_usage
+      println "ReID version " + VERSION
+      println DATE
+      println @|
+               |USAGE
+               |  reid [--exact] old_id new_id         [wildcard_filepaths] [--exclude] [...]
+               |  reid old.package.id  new.package.id  [wildcard_filepaths] [--exclude] [...]
+               |  reid old/folder/path new/folder/path [wildcard_filepaths] [--exclude] [...]
+               |  reid <Changes.txt>
+               |
+               |OPTIONS
+               |  --exact
+               |    Only exact matches of 'old_id' are changed to 'new_id'. If '--exact' is
+               |    not specified then variations are searched for - replacing "alphaBeta" makes
+               |    appropriate changes to "alphaBeta", "alpha_beta", "AlphaBeta", "Alpha_Beta",
+               |    and "ALPHA_BETA".
+               |
+               |    If you specify an old.package.id then --exact is implied as is old/package/id
+               |    path replacement.
+               |
+               |    If you specify an old/folder/path then --exact is implied.
+               |
+               |  --exclude [...]
+               |    Files matching any wildcard patterns coming after '--exclude' are skipped.
+               |    For example:
+               |      --exclude "***/*.backup" "Build/**"
+               |
+               |    Note: binary files as well as the default change description output file,
+               |    "Changes.txt" are excluded by default.
+               |
+               |  [wildcard_filepath]
+               |    Use "quoted/wildcard/filepaths" to ensure that nonstandard wildcards '**'
+               |    and '***/' are recognized. Note: '?' can be used to match a single character.
+               |      "*.rogue"     # matches files in the current folder ending with ".rogue"
+               |      "**/*.rogue"  # matches files in subfolders but not in the current folder
+               |      "***/*.rogue" # matches files in subfolders or in the current folder.
+
+    method collect_changes( from_name:String, to_name:String, filepaths:String[] )
+      changes = Changes()
+      local replacements = changes.replacements
+
+      if (is_exact or from_name.contains('/'))
+        replacements[ from_name ] = to_name
+
+      elseIf (from_name.contains('.'))
+        # Using a dot notation - keep it exact case but also include folders
+        replacements[ from_name ] = to_name
+        replacements[ from_name.split('.').join("/") ] = to_name.split('.').join("/")
+
+      else
+        local has_underscore = false
+        local has_uppercase  = false
+        local has_lowercase  = false
+        forEach (ch in from_name+to_name)
+          if (ch == '_')           has_underscore = true
+          elseIf (ch.is_uppercase) has_uppercase  = true
+          elseIf (ch.is_lowercase) has_lowercase  = true
+        endForEach
+
+        local Old_Parts : String[]
+        local New_Parts : String[]
+        if (has_underscore)
+          # Maybe_Capitalized_Serpent_Case
+          Old_Parts = from_name.split( '_' )
+          New_Parts = to_name.split( '_' )
+          if (has_uppercase)
+            if (not has_lowercase)
+              # ALL_CAPS_SERPENT_CASE
+              Old_Parts = Old_Parts.map<<String>>( (part)=>part.to_lowercase.capitalized )
+              New_Parts = New_Parts.map<<String>>( (part)=>part.to_lowercase.capitalized )
+            endIf
+          else
+            # serpent_case
+            Old_Parts = Old_Parts.map<<String>>( (part)=>part.capitalized )
+            New_Parts = New_Parts.map<<String>>( (part)=>part.capitalized )
+          endIf
+        elseIf (has_uppercase)
+          if (has_lowercase)
+            # CamelCase
+            Old_Parts = convert_CamelCase_to_Capitalized_Serpent_Case( from_name ).split( '_' )
+            New_Parts = convert_CamelCase_to_Capitalized_Serpent_Case( to_name ).split( '_' )
+          else
+            # ALLCAPS
+            Old_Parts = [ from_name.to_lowercase.capitalized ]
+            New_Parts = [ to_name.to_lowercase.capitalized ]
+          endIf
+        else
+          # allowercase
+          Old_Parts = [ from_name.capitalized ]
+          New_Parts = [ to_name.capitalized ]
+        endIf
+
+        # Capitalized_Serpent_Case
+        replacements[ Old_Parts.join('_') ] = New_Parts.join('_')
+
+        # serpent_case
+        replacements[ Old_Parts.join('_').to_lowercase ] = New_Parts.join('_').to_lowercase
+
+        # ALL_CAPS_SERPENT_CASE
+        replacements[ Old_Parts.join('_').to_uppercase ] = New_Parts.join('_').to_uppercase
+
+        # CamelCase
+        replacements[ Old_Parts.join("") ] = New_Parts.join("")
+
+        # lowerCamelCase
+        local oldCamelCase = [Old_Parts[0].to_lowercase].add(Old_Parts.subset(1)).join("")
+        local newCamelCase = [New_Parts[0].to_lowercase].add(New_Parts.subset(1)).join("")
+        replacements[ oldCamelCase ] = newCamelCase
+
+        # alllowercase
+        replacements[ Old_Parts.join("").to_lowercase ] = New_Parts.join("").to_lowercase
+      endIf
+
+      changes.create_styled_replacements
+
+      forEach (filepath in filepaths)
+        changes.collect_changes( filepath )
+      endForEach
+
+      changes.preview_and_apply
+
+    method convert_CamelCase_to_Capitalized_Serpent_Case( text:String )->String
+      use builder = StringBuilder.pool
+        local prev : Character
+        forEach (ch in text)
+          if (ch.is_lowercase)
+            if (prev.is_uppercase)
+              builder.remove_last
+              if (builder.count and builder.last.is_letter) builder.print '_'
+              builder.print prev
+            endIf
+          elseIf (ch.is_uppercase)
+            if (prev.is_lowercase)
+              builder.print '_'
+            endIf
+          endIf
+          builder.print ch
+          prev = ch
+        endForEach
+        return builder->String
+      endUse
+
+endClass
+
+class Changes
+  PROPERTIES
+    replacements           = StringTable<<String>>()
+    styled_replacements    = StringTable<<String>>()
+    file_changes           = FileChanges[]
+    folders_pending_rename = StringTable<<String>>()
+
+  METHODS
+    method init
+
+    method init( file:File )
+      # Load changes from file
+      local cur_file_changes : FileChanges
+
+      forEach (line at index in LineReader(file))
+        line = line.trimmed
+        if (line.count == 0 or line.begins_with('#')) nextIteration
+
+        if (line.begins_with("replace "))
+          local parts = line.after_first(' ').split("->")
+          if (parts.count == 2)
+            replacements[ parts.first.trimmed ] = parts.last.trimmed
+          else
+            throw SyntaxError( "Syntax error on line $: $" (index+1,line) )
+          endIf
+
+        elseIf (line.begins_with("file "))
+          cur_file_changes = FileChanges( this, line.after_first(' ').trimmed )
+          file_changes.add( cur_file_changes )
+
+        elseIf (line.begins_with("rename "))
+          if (cur_file_changes)
+            cur_file_changes.new_filepath = line.after_first(' ').trimmed
+          else
+            throw SyntaxError( "Syntax error on line $: 'rename' without preceding 'file'." (index+1) )
+          endIf
+
+        else
+          if (line[0].is_number)
+            if (not cur_file_changes)
+              throw SyntaxError( "Syntax error on line $: line change without preceding 'file'." (index+1) )
+            endIf
+            cur_file_changes.add( line.before_first(' ')->Int32, null, line.after_first(' ').trimmed )
+          else
+            throw SyntaxError( "Syntax error on line $: $" (index+1,line) )
+          endIf
+        endIf
+      endForEach
+
+      create_styled_replacements
+
+    method after_whitespace( text:String )->String
+      local n = count_whitespace( text )
+      if (n == 0) return text
+      return text.rightmost( -n )
+
+    method count_whitespace( text:String )->Int32
+      local n = 0
+      forEach (ch in text)
+        if (ch == ' ' or ch == '\t') ++n
+        else                         return n
+      endForEach
+      return n
+
+    method apply_changes
+      forEach (file_change in file_changes)
+        file_change.apply_changes
+      endForEach
+
+      local folders = FileChanges[]
+      forEach (entry in folders_pending_rename.entries)
+        folders.add( FileChanges(this,entry.key,entry.value) )
+      endForEach
+      folders.sort( (a,b) => (a.filepath.count > b.filepath.count) ) # rename longest first
+
+      forEach (folder in folders)
+        if (File.is_folder(folder.filepath))
+          # If it doesn't exist then it's already been incidentally handled by a subfolder that was moved
+          println "Reorganizing $ -> $" (folder.filepath,folder.new_filepath)
+
+          local files = Files( folder.filepath, "**", &!ignore_hidden )
+          File.sync_from( files, folder.new_filepath, &keep_unused, &verbose )
+          forEach (old_filepath in files)
+            println "> Delete old copy of " + old_filepath
+            File.delete( old_filepath )
+          endForEach
+
+          local unused_path = folder.filepath
+          while (unused_path != "" and File.listing(unused_path).is_empty)
+            println "> Delete " + unused_path
+            File.delete( unused_path )
+            unused_path = File.folder( unused_path )
+          endWhile
+        endIf
+      endForEach
+
+    method apply_replacements( text:String, &styled )->String
+      local cur_replacements = which{ styled:styled_replacements || replacements }
+      forEach (key in cur_replacements.keys)
+        text = text.replacing( key, cur_replacements[key] )
+      endForEach
+      return text
+
+    method collect_changes( filepath:String )
+      local changes : FileChanges
+      local updated_filepath = apply_replacements( filepath )
+      if (updated_filepath != filepath)
+        changes = FileChanges( this, filepath, updated_filepath )
+      endIf
+
+      if (File.is_valid_utf8(filepath))
+        forEach (line at index in LineReader(File(filepath)))
+          local updated_line = apply_replacements( line )
+          if (updated_line != line)
+            if (not changes) changes = FileChanges( this, filepath )
+            changes.add( index+1, line, after_whitespace(updated_line) )
+          endIf
+        endForEach
+      endIf
+
+      if (changes) file_changes.add( changes )
+
+    method create_styled_replacements
+      forEach (key in replacements.keys)
+        styled_replacements[ key ] = ConsoleStyle().underline->String + replacements[key] + ConsoleStyle().underline_off
+      endForEach
+
+    method preview_and_apply
+      forEach (key in replacements.keys)
+        println "replace $ -> $" (key,replacements[key])
+      endForEach
+      println
+
+      if (file_changes.is_empty)
+        println "*** No changes required; no IDs match search patterns. ***"
+        return
+      endIf
+
+      println "# REID PENDING CHANGES"
+      println ((forEach in file_changes)->String(&styled))
+
+      println @|Review the changes above and then choose whether to proceed with changes (y/s/n):
+               |  y            - Indicated changes will be performed.
+               |  s [filepath] - Save changes to filepath (default: "Changes.txt"). Then edit as
+               |                 desired, deleting or modifying listed changes, and then run
+               |                 e.g. "reid Changes.txt".
+               |  n            - No changes performed.
+               |
+               |*** WARNING: Please back up all listed files before proceeding.   ***
+               |*** WARNING: Especially because this is an early version of ReID. ***
+               |
+
+      local choice = Console.input( "Make changes now (y/s/n)? " )
+      if (choice.count == 0) choice = "n"
+      else                   choice = choice.to_lowercase
+      which (choice[0])
+        case 'y'
+          println
+          println "Applying changes..."
+          println
+          apply_changes
+
+        case 's'
+          local filename = choice.from(1).trimmed
+          if (filename == "") filename = "Changes.txt"
+          contingent
+            if (File.exists(filename))
+              necessary (Console.input(''*** A file named "$" already exists. Overwrite it (y/n)? ''(filename)).to_lowercase == "y")
+            endIf
+
+            local builder = StringBuilder()
+
+            forEach (key in replacements.keys)
+              builder.println "replace $ -> $" (key,replacements[key])
+            endForEach
+            builder.println
+
+            builder.println (forEach in file_changes)
+            File.save( filename, builder->String )
+            println ''Saved "$". Edit as desired and then run 'reid "$"'.'' (filename,filename)
+          unsatisfied
+            println "Save aborted."
+          endContingent
+        case 'n'
+          println "No changes made."
+      endWhich
+
+endClass
+
+class FileChanges
+  PROPERTIES
+    changes      : Changes
+    filepath     : String
+    new_filepath : String
+    line_changes = LineChange[]
+
+  METHODS
+    method init( changes, filepath, new_filepath=null )
+      if (new_filepath is filepath) new_filepath = null
+
+    method add( line:Int32, old_content:String, new_content:String )
+      line_changes.add( LineChange(changes,line,old_content,new_content) )
+
+    method apply_changes
+      if (line_changes.count)
+        println "[$]" (filepath)
+        println "> Replace identifiers"
+        line_changes.sort( (a,b)=>(a.line < b.line) )
+
+        local builder = StringBuilder()
+        forEach (line at index in LineReader(File(filepath)))
+          if (line_changes.count and line_changes.first.line-1 == index)
+            # Replace this line
+            local ws = changes.count_whitespace( line )
+            builder.println( line.leftmost( ws ) + line_changes.remove_first.new_content )
+          else
+            builder.println( line )
+          endIf
+        endForEach
+
+        File.save( filepath, builder->String )
+      endIf
+
+      if (new_filepath)
+        if (is_folder)
+          changes.folders_pending_rename[ filepath ] = new_filepath
+
+        else
+          if (File.filename(filepath) != File.filename(new_filepath))
+            # Just rename the actual file for now and queue any different paths
+            # for renaming later.
+            local dest_filepath = File.filename( new_filepath )
+            if (File.folder(filepath) != "")
+              dest_filepath = "$/$" (File.folder(filepath),dest_filepath)
+            endIf
+            println "> Rename $ -> $" (filepath,dest_filepath)
+            File.rename( filepath, dest_filepath )
+          endIf
+
+          local old_path = File.folder( filepath )
+          local new_path = File.folder( new_filepath )
+          if (old_path != new_path) changes.folders_pending_rename[ old_path ] = new_path
+
+        endIf
+      endIf
+
+      println
+
+    method bolded( text:String )->String
+      return ConsoleStyle().bold->String + text + ConsoleStyle().bold_off->String
+
+    method is_folder->Logical
+      return File.is_folder( filepath )
+
+    method to->String
+      return this->String( false )
+
+    method to->String( styled:Logical )
+      use builder = StringBuilder.pool
+        if (styled) builder.println "file    " + bolded(filepath)
+        else        builder.println "file    " + filepath
+        if (new_filepath)
+          if (styled) builder.println "rename  " + bolded(changes.apply_replacements(filepath,&styled))
+          else        builder.println "rename  " + new_filepath
+        endIf
+
+        if (line_changes.count)
+          (forEach in line_changes).print( builder, &=styled )
+        endIf
+        builder.println
+
+        return builder->String
+      endUse
+endClass
+
+class LineChange( changes:Changes, line:Int32, old_content:String, new_content:String ) [compound]
+  METHODS
+    method print( builder:StringBuilder, &styled )
+      if (styled and old_content)
+        builder.print line.format("06")
+        builder.print "  "
+        builder.println( changes.after_whitespace( changes.apply_replacements(old_content,&styled) ) )
+      else
+        builder.println "$  $" (line.format("06"), new_content)
+      endIf
+
+    method to->String
+      return "$  $" (line.format("06"),new_content)
+endClass
+

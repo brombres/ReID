@@ -1,0 +1,4 @@
+*.swp
+Build
+.rogo
+.DS_Store
