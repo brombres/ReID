@@ -3,9 +3,9 @@
 # 2020-05-17 by Abe Pralle
 #===============================================================================
 $define VERSION "1.0"
-$define DATE    "May 21, 2020"
+$define DATE    "May 23, 2020"
 
-$requireRogue "1.7.1"
+$requireRogue "1.7.2"
 
 ReID()
 
@@ -14,6 +14,7 @@ class ReID
     is_exact        : Logical
     include_content : Logical
     include_files   : Logical
+    is_plain        : Logical
     excluded        = String[][ "ReIDChanges.txt" ]
     changes         : Changes
 
@@ -22,16 +23,25 @@ class ReID
       local args = System.command_line_arguments.cloned
       local parsing_exclusions = false
       forEach (arg in rewriter=args.rewriter)
+        local name = arg.before_first( '=' )
+        local param = arg.after_first( '=' )
         if (arg.begins_with("--"))
-          which (arg)
+          which (name)
             case "--content"
               include_content = true
             case "--exact"
               is_exact = true
             case "--exclude"
               parsing_exclusions = true
+              if (param.count) excluded.add( param )
+              else             parsing_exclusions = true
+            case "--help"
+              print_usage
+              return
             case "--files"
               include_files = true
+            case "--plain"
+              is_plain = true
             others
               println( "Invalid option: " + arg )
               print_usage
@@ -55,6 +65,9 @@ class ReID
           System.exit 1
 
         case 1
+          if (File.is_folder(args.first))
+            throw Error( ''Expected a change list but "$" is a folder.'' (args.first) )
+          endIf
           changes = Changes( File(args.first) )
           changes.preview_and_apply
 
@@ -65,6 +78,13 @@ class ReID
           forEach (pattern in args.subset(2))
             if (pattern.contains('*') or pattern.contains('?'))
               forEach (filepath in File.listing(".",pattern,&ignore_hidden))
+                contingent
+                  necessary (not File.matches_wildcard_pattern(filepath,forEach in excluded))
+                  filepaths.add( filepath )
+                endContingent
+              endForEach
+            elseIf (File.is_folder(pattern))
+              forEach (filepath in File.listing(pattern,"**",&ignore_hidden))
                 contingent
                   necessary (not File.matches_wildcard_pattern(filepath,forEach in excluded))
                   filepaths.add( filepath )
@@ -127,6 +147,9 @@ class ReID
                |  --exact
                |    The search term is used exactly without added automatic variations.
                |
+               |  --exclude=<filepattern>
+               |    Any files matching the given pattern are skipped.
+               |
                |  --exclude [...]
                |    Files matching any wildcard patterns coming after '--exclude' are skipped.
                |    For example:
@@ -139,15 +162,22 @@ class ReID
                |    Applies replacements to filenames and folder paths only, not to file content.
                |    If neither '--content' or '--files' are specified then both are implied.
                |
+               |  --help
+               |    Display this help text.
+               |
+               |  --plain
+               |    Disables styled text such as bold and underline in the preview of changes.
+               |
                |  [wildcard_filepath]
-               |    Use "quoted/wildcard/filepaths" to ensure that nonstandard wildcards '**'
-               |    and '***/' are recognized. Note: '?' can be used to match a single character.
+               |    Put patterns in quotes to ensure that ReID's non-standard wildcard patterns
+               |    are correctly processed. By example:
                |      "*.rogue"     # matches files in the current folder ending with ".rogue"
                |      "**/*.rogue"  # matches files in subfolders but not in the current folder
                |      "***/*.rogue" # matches files in subfolders or in the current folder.
+               |    Finally, '?' can be used to match any single character.
 
     method collect_changes( from_name:String, to_name:String, filepaths:String[] )
-      changes = Changes( &=include_content, &=include_files )
+      changes = Changes( &=include_content, &=include_files, &=is_plain )
       local replacements = changes.replacements
 
       if (is_exact or from_name.contains('/'))
@@ -261,9 +291,10 @@ class Changes
     folders_pending_rename = StringTable<<String>>()
     include_content        : Logical
     include_files          : Logical
+    is_plain               : Logical
 
   METHODS
-    method init( include_content, include_files )
+    method init( include_content, include_files, is_plain )
 
     method init( file:File )
       # Load changes from file
@@ -379,7 +410,11 @@ class Changes
 
     method create_styled_replacements
       forEach (key in replacements.keys)
-        styled_replacements[ key ] = ConsoleStyle().underline->String + replacements[key] + ConsoleStyle().underline_off
+        if (is_plain)
+          styled_replacements[ key ] = replacements[ key ]
+        else
+          styled_replacements[ key ] = ConsoleStyle().underline->String + replacements[key] + ConsoleStyle().underline_off
+        endIf
       endForEach
 
     method preview_and_apply
@@ -504,6 +539,7 @@ class FileChanges
       println
 
     method bolded( text:String )->String
+      if (changes.is_plain) return text
       return ConsoleStyle().bold->String + text + ConsoleStyle().bold_off->String
 
     method is_folder->Logical

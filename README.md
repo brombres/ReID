@@ -2,8 +2,8 @@
 Command line tool for replacing identifiers within source code and adjusting folder hierarchies.
 
 ## Version
-- v1.0 - May 21, 2020
-- macOS and Linux
+- v1.1 - May 21, 2020
+- macOS, Linux, Windows
 - [MIT License](LICENSE)
 - By Abe Pralle
 
@@ -78,6 +78,9 @@ and the `Beta` file content:
 - `--exact`<br>
     The search term is used exactly without added automatic variations.
 
+- `--exclude=<filepattern>`<br>
+    Any files matching the given pattern are skipped.
+
 - `--exclude [...]`<br>
     Files matching any wildcard patterns coming after `--exclude` are skipped.
     For example:
@@ -90,6 +93,12 @@ and the `Beta` file content:
 - `--files`<br>
     Applies replacements to filenames and folder paths only, not to file content.
     If neither `--content` nor `--files` are specified then both are implied.
+
+- `--help`<br>
+    Display this help text.
+
+- `--plain`<br>
+    Disables styled text such as bold and underline in the preview of changes.
 
 - [*wildcard_filepath*]<br>
     Use "quoted/wildcard/filepaths" to ensure that nonstandard wildcards `**`
