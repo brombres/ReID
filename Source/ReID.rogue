@@ -5,13 +5,17 @@
 $define VERSION "1.0"
 $define DATE    "May 21, 2020"
 
+$requireRogue "1.7.1"
+
 ReID()
 
 class ReID
   PROPERTIES
-    is_exact            : Logical
-    excluded            = String[][ "Changes.txt" ]
-    changes             : Changes
+    is_exact        : Logical
+    include_content : Logical
+    include_files   : Logical
+    excluded        = String[][ "ReIDChanges.txt" ]
+    changes         : Changes
 
   METHODS
     method init
@@ -20,10 +24,14 @@ class ReID
       forEach (arg in rewriter=args.rewriter)
         if (arg.begins_with("--"))
           which (arg)
+            case "--content"
+              include_content = true
             case "--exact"
               is_exact = true
             case "--exclude"
               parsing_exclusions = true
+            case "--files"
+              include_files = true
             others
               println( "Invalid option: " + arg )
               print_usage
@@ -35,6 +43,11 @@ class ReID
           rewriter.write( arg )
         endIf
       endForEach
+
+      if (not (include_content or include_files))
+        include_content = true
+        include_files = true
+      endIf
 
       which (args.count)
         case 0
@@ -70,22 +83,49 @@ class ReID
       println DATE
       println @|
                |USAGE
-               |  reid [--exact] old_id new_id         [wildcard_filepaths] [--exclude] [...]
+               |  reid [options] OldID NewID           [wildcard_filepaths] [--exclude] [...]
                |  reid old.package.id  new.package.id  [wildcard_filepaths] [--exclude] [...]
                |  reid old/folder/path new/folder/path [wildcard_filepaths] [--exclude] [...]
-               |  reid <Changes.txt>
+               |  reid ReIDChanges.txt
                |
                |OPTIONS
+               |  reid OldID NewID [wildcard_filepaths]
+               |    Accepts IDs in any of the following capitalization styles and automatically
+               |    generates the other style variations for ID replacement:
+               |      OldID  -> NewID
+               |      oldID  -> newID
+               |      Old_ID -> New_ID
+               |      old_id -> new_id
+               |      OLD_ID -> NEW_ID
+               |      oldid  -> newid
+               |    Using the given input filepath(s) (or "**" - all files and subfolders in
+               |    the current folder), ReID then generates and displays a list of changes it
+               |    will make to the content of the files and the filepath names. The user can
+               |    then proceed with the changes immediately or save them to an intermediate
+               |    file for editing (e.g. "ReIDChanges.txt"), then running
+               |    "reid ReIDChanges.txt".
+               |
+               |  reid old.package.id new.package.id [wildcard_filepaths]
+               |    Only two id variations are replaced when dots ('.') are present in the ID:
+               |      old.package.id -> new.package.id
+               |      old/package/id -> new/package/id
+               |    Passing '--exact' limits the search to the dot-separated variation.
+               |
+               |  reid old/folder/path new/folder/path [wildcard_filepaths]
+               |    When slashes are present in the search term, ReID replaces only exact
+               |    matches, which are most often folder paths.
+               |
+               |  reid ReIDChanges.txt
+               |    When ReID is run, the previewed changes are saved to a file, and the file
+               |    is edited to further adjust the changes, then run `reid <filename>` to
+               |    read and then apply those edited changes.
+               |
+               |  --content
+               |    Applies replacements to file content only, not to filenames or folder paths.
+               |    If neither '--content' or '--files' are specified then both are implied.
+               |
                |  --exact
-               |    Only exact matches of 'old_id' are changed to 'new_id'. If '--exact' is
-               |    not specified then variations are searched for - replacing "alphaBeta" makes
-               |    appropriate changes to "alphaBeta", "alpha_beta", "AlphaBeta", "Alpha_Beta",
-               |    and "ALPHA_BETA".
-               |
-               |    If you specify an old.package.id then --exact is implied as is old/package/id
-               |    path replacement.
-               |
-               |    If you specify an old/folder/path then --exact is implied.
+               |    The search term is used exactly without added automatic variations.
                |
                |  --exclude [...]
                |    Files matching any wildcard patterns coming after '--exclude' are skipped.
@@ -93,7 +133,11 @@ class ReID
                |      --exclude "***/*.backup" "Build/**"
                |
                |    Note: binary files as well as the default change description output file,
-               |    "Changes.txt" are excluded by default.
+               |    "ReIDChanges.txt" are excluded by default.
+               |
+               |  --files
+               |    Applies replacements to filenames and folder paths only, not to file content.
+               |    If neither '--content' or '--files' are specified then both are implied.
                |
                |  [wildcard_filepath]
                |    Use "quoted/wildcard/filepaths" to ensure that nonstandard wildcards '**'
@@ -103,7 +147,7 @@ class ReID
                |      "***/*.rogue" # matches files in subfolders or in the current folder.
 
     method collect_changes( from_name:String, to_name:String, filepaths:String[] )
-      changes = Changes()
+      changes = Changes( &=include_content, &=include_files )
       local replacements = changes.replacements
 
       if (is_exact or from_name.contains('/'))
@@ -215,9 +259,11 @@ class Changes
     styled_replacements    = StringTable<<String>>()
     file_changes           = FileChanges[]
     folders_pending_rename = StringTable<<String>>()
+    include_content        : Logical
+    include_files          : Logical
 
   METHODS
-    method init
+    method init( include_content, include_files )
 
     method init( file:File )
       # Load changes from file
@@ -315,11 +361,11 @@ class Changes
     method collect_changes( filepath:String )
       local changes : FileChanges
       local updated_filepath = apply_replacements( filepath )
-      if (updated_filepath != filepath)
+      if (include_files and updated_filepath != filepath)
         changes = FileChanges( this, filepath, updated_filepath )
       endIf
 
-      if (File.is_valid_utf8(filepath))
+      if (include_content and File.is_valid_utf8(filepath))
         forEach (line at index in LineReader(File(filepath)))
           local updated_line = apply_replacements( line )
           if (updated_line != line)
@@ -352,9 +398,9 @@ class Changes
 
       println @|Review the changes above and then choose whether to proceed with changes (y/s/n):
                |  y            - Indicated changes will be performed.
-               |  s [filepath] - Save changes to filepath (default: "Changes.txt"). Then edit as
+               |  s [filepath] - Save changes to filepath (default: "ReIDChanges.txt"). Then edit as
                |                 desired, deleting or modifying listed changes, and then run
-               |                 e.g. "reid Changes.txt".
+               |                 e.g. "reid ReIDChanges.txt".
                |  n            - No changes performed.
                |
                |*** WARNING: Please back up all listed files before proceeding.   ***
@@ -364,16 +410,16 @@ class Changes
       local choice = Console.input( "Make changes now (y/s/n)? " )
       if (choice.count == 0) choice = "n"
       else                   choice = choice.to_lowercase
-      which (choice[0])
-        case 'y'
+      which (choice)
+        case "y"
           println
           println "Applying changes..."
           println
           apply_changes
 
-        case 's'
+        case "s"
           local filename = choice.from(1).trimmed
-          if (filename == "") filename = "Changes.txt"
+          if (filename == "") filename = "ReIDChanges.txt"
           contingent
             if (File.exists(filename))
               necessary (Console.input(''*** A file named "$" already exists. Overwrite it (y/n)? ''(filename)).to_lowercase == "y")
@@ -392,7 +438,7 @@ class Changes
           unsatisfied
             println "Save aborted."
           endContingent
-        case 'n'
+        others
           println "No changes made."
       endWhich
 
