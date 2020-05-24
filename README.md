@@ -2,14 +2,16 @@
 Command line tool for replacing identifiers within source code and adjusting folder hierarchies.
 
 ## Version
-- v1.1 - May 21, 2020
+- v1.1 - May 23, 2020
 - macOS, Linux, Windows
 - [MIT License](LICENSE)
 - By Abe Pralle
 
 ## Installation
 1. Install the [Rogue](https://github.com/AbePralle/Rogue) language.
-2. Run `rogo` in this folder. **ReID** will be compiled and a launcher will be created as `/usr/local/bin/reid`.
+2. Run `rogo` in this folder to compile **ReID**.
+    - On macOS and Linux a launcher will be created here: `/usr/local/bin/reid`.
+    - On Windows the build process will print the necessary folder to add to the system PATH environment variable.
 
 ## Example
 Here is a sample project `Alpha` with its file structure:
