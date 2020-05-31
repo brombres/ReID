@@ -34,6 +34,7 @@ and the `Beta` file content:
     reid [options] OldID NewID           [wildcard_filepaths] [--exclude] [...]
     reid old.package.id  new.package.id  [wildcard_filepaths] [--exclude] [...]
     reid old/folder/path new/folder/path [wildcard_filepaths] [--exclude] [...]
+    reid old$pattern new$pattern         [wildcard_filepaths] [--exclude] [...]
     reid ReIDChanges.txt
 
 ## Options
@@ -67,6 +68,12 @@ and the `Beta` file content:
 - `reid old/folder/path new/folder/path [wildcard_filepaths]`<br>
   When slashes are present in the search term, ReID replaces only exact
   matches, which are most often folder paths.
+
+- `reid old$pattern new$pattern [wildcard_filepaths]`<br>
+    Uses Rogue's String.replacing_pattern() syntax. Examples:
+
+        reid "$ and $" "$ & $"        # Alice and Bob -> Alice & Bob
+        reid "$ and $" "$(1) & $(0)"  # Alice and Bob -> Bob & Alice
 
 - `reid ReIDChanges.txt`<br>
   When ReID is run, the previewed changes are saved to a file, and the file
