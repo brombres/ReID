@@ -302,6 +302,8 @@ class Changes
     include_files          : Logical
     is_plain               : Logical
     uses_patterns          : Logical
+    renamed_files_count    = 0
+    changed_lines_count    = 0
 
   METHODS
     method init( include_content, include_files, is_plain )
@@ -391,6 +393,13 @@ class Changes
           endWhile
         endIf
       endForEach
+
+      if (renamed_files_count)
+        println "$ renamed" ("# file".pluralized(renamed_files_count))
+      endIf
+      if (changed_lines_count)
+        println "$ changed" ("# line".pluralized(changed_lines_count))
+      endIf
 
     method apply_replacements( text:String, &styled )->String
       local cur_replacements = which{ styled:styled_replacements || replacements }
@@ -521,6 +530,7 @@ class FileChanges
             # Replace this line
             local ws = changes.count_whitespace( line )
             builder.println( line.leftmost( ws ) + line_changes.remove_first.new_content )
+            ++changes.changed_lines_count
           else
             builder.println( line )
           endIf
@@ -543,6 +553,7 @@ class FileChanges
             endIf
             println "> Rename $ -> $" (filepath,dest_filepath)
             File.rename( filepath, dest_filepath )
+            ++changes.renamed_files_count
           endIf
 
           local old_path = File.folder( filepath )
