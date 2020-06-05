@@ -5,7 +5,7 @@
 $define VERSION "1.1"
 $define DATE    "May 23, 2020"
 
-$requireRogue "1.7.2"
+$requireRogue "1.7.4"
 
 ReID()
 
@@ -32,7 +32,6 @@ class ReID
             case "--exact"
               is_exact = true
             case "--exclude"
-              parsing_exclusions = true
               if (param.count) excluded.add( param )
               else             parsing_exclusions = true
             case "--help"
@@ -106,6 +105,7 @@ class ReID
                |  reid [options] OldID NewID           [wildcard_filepaths] [--exclude] [...]
                |  reid old.package.id  new.package.id  [wildcard_filepaths] [--exclude] [...]
                |  reid old/folder/path new/folder/path [wildcard_filepaths] [--exclude] [...]
+               |  reid old$pattern new$pattern         [wildcard_filepaths] [--exclude] [...]
                |  reid ReIDChanges.txt
                |
                |OPTIONS
@@ -134,6 +134,11 @@ class ReID
                |  reid old/folder/path new/folder/path [wildcard_filepaths]
                |    When slashes are present in the search term, ReID replaces only exact
                |    matches, which are most often folder paths.
+               |
+               |  reid old$pattern new$pattern [wildcard_filepaths]
+               |    Uses Rogue's String.replacing_pattern() syntax. Examples:
+               |    reid "$ and $" "$ & $"        # Alice and Bob -> Alice & Bob
+               |    reid "$ and $" "$(1) & $(0)"  # Alice and Bob -> Bob & Alice
                |
                |  reid ReIDChanges.txt
                |    When ReID is run, the previewed changes are saved to a file, and the file
@@ -180,7 +185,11 @@ class ReID
       changes = Changes( &=include_content, &=include_files, &=is_plain )
       local replacements = changes.replacements
 
-      if (is_exact or from_name.contains('/'))
+      if (from_name.contains('$'))
+        changes.uses_patterns = true
+        replacements[ from_name ] = to_name
+
+      elseIf (is_exact or from_name.contains('/'))
         replacements[ from_name ] = to_name
 
       elseIf (from_name.contains('.'))
@@ -292,6 +301,9 @@ class Changes
     include_content        : Logical
     include_files          : Logical
     is_plain               : Logical
+    uses_patterns          : Logical
+    renamed_files_count    = 0
+    changed_lines_count    = 0
 
   METHODS
     method init( include_content, include_files, is_plain )
@@ -382,11 +394,24 @@ class Changes
         endIf
       endForEach
 
+      if (renamed_files_count)
+        println "$ renamed" ("# file".pluralized(renamed_files_count))
+      endIf
+      if (changed_lines_count)
+        println "$ changed" ("# line".pluralized(changed_lines_count))
+      endIf
+
     method apply_replacements( text:String, &styled )->String
       local cur_replacements = which{ styled:styled_replacements || replacements }
-      forEach (key in cur_replacements.keys)
-        text = text.replacing( key, cur_replacements[key] )
-      endForEach
+      if (uses_patterns)
+        forEach (key in cur_replacements.keys)
+          text = text.replacing_pattern( key, cur_replacements[key] )
+        endForEach
+      else
+        forEach (key in cur_replacements.keys)
+          text = text.replacing( key, cur_replacements[key] )
+        endForEach
+      endIf
       return text
 
     method collect_changes( filepath:String )
@@ -505,6 +530,7 @@ class FileChanges
             # Replace this line
             local ws = changes.count_whitespace( line )
             builder.println( line.leftmost( ws ) + line_changes.remove_first.new_content )
+            ++changes.changed_lines_count
           else
             builder.println( line )
           endIf
@@ -527,6 +553,7 @@ class FileChanges
             endIf
             println "> Rename $ -> $" (filepath,dest_filepath)
             File.rename( filepath, dest_filepath )
+            ++changes.renamed_files_count
           endIf
 
           local old_path = File.folder( filepath )
