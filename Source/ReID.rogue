@@ -15,6 +15,7 @@ class ReID
     include_content : Logical
     include_files   : Logical
     is_plain        : Logical
+    is_partial      : Logical
     excluded        = String[][ "ReIDChanges.txt" ]
     changes         : Changes
 
@@ -39,6 +40,8 @@ class ReID
               return
             case "--files"
               include_files = true
+            case "--partial"
+              is_partial = true
             case "--plain"
               is_plain = true
             others
@@ -170,6 +173,12 @@ class ReID
                |  --help
                |    Display this help text.
                |
+               |  --partial
+               |    Allows partial matches within standard identifiers that start with a letter
+               |    or underscore and end with an alpha-numeric character or underscore. For
+               |    example, `reid --partial time date` would replace `timer` with `dater`.
+               |    Note: pattern-based replacements always allow partial matches.
+               |
                |  --plain
                |    Disables styled text such as bold and underline in the preview of changes.
                |
@@ -182,7 +191,7 @@ class ReID
                |    Finally, '?' can be used to match any single character.
 
     method collect_changes( from_name:String, to_name:String, filepaths:String[] )
-      changes = Changes( &=include_content, &=include_files, &=is_plain )
+      changes = Changes( &=include_content, &=include_files, &=is_plain, &=is_partial )
       local replacements = changes.replacements
 
       if (from_name.contains('$'))
@@ -301,12 +310,13 @@ class Changes
     include_content        : Logical
     include_files          : Logical
     is_plain               : Logical
+    is_partial             : Logical
     uses_patterns          : Logical
     renamed_files_count    = 0
     changed_lines_count    = 0
 
   METHODS
-    method init( include_content, include_files, is_plain )
+    method init( include_content, include_files, is_plain, is_partial )
 
     method init( file:File )
       # Load changes from file
@@ -409,10 +419,49 @@ class Changes
         endForEach
       else
         forEach (key in cur_replacements.keys)
-          text = text.replacing( key, cur_replacements[key] )
+          text = replace( text, key, cur_replacements[key] )
         endForEach
       endIf
       return text
+
+    method replace( text:String, look_for:String, replace_with:String )->String
+      if (is_partial) return text.replacing( look_for, replace_with )
+
+      if (look_for == "") return text
+
+      local is_id_start = look_for[0].is_identifier( &start )
+      local is_id_end   = look_for.last.is_identifier
+      if (not (is_id_start or is_id_end))
+        return text.replacing( look_for, replace_with )
+      endIf
+
+      local i1 = text.locate( look_for )
+      if (not i1.exists) return text
+
+      local i0 = 0
+
+      local buffer = StringBuilder( text.count*1.1 )
+      while (i1.exists)
+        forEach (i in i0..<i1.value) buffer.print( text[i] )
+        i0 = i1.value + look_for.count
+        contingent
+          local is_partial_start = (is_id_start and i1.value > 0 and text[i1.value-1].is_identifier)
+          necessary (not is_partial_start)
+          sufficient (not is_id_end)
+          sufficient (i0 == text.count)
+          local is_partial_end = (is_id_end and text[i0].is_identifier)
+          necessary (not is_partial_end)
+        satisfied
+          buffer.print( replace_with )  # change the full match
+        unsatisfied
+          buffer.print( look_for )  # don't change the partial match
+        endContingent
+        i1 = text.locate( look_for, i0 )
+      endWhile
+
+      forEach (i in i0..<text.count) buffer.print( text[i] )
+
+      return buffer->String
 
     method collect_changes( filepath:String )
       local changes : FileChanges

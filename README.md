@@ -106,6 +106,12 @@ and the `Beta` file content:
 - `--help`<br>
     Display this help text.
 
+- `--partial`<br>
+    Allows partial matches within standard identifiers that start with a letter
+    or underscore and end with an alpha-numeric character or underscore. For
+    example, `reid --partial time date` would replace `timer` with `dater`.
+    Note: pattern-based replacements always allow partial matches.
+
 - `--plain`<br>
     Disables styled text such as bold and underline in the preview of changes.
 
