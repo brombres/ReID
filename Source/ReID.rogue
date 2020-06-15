@@ -16,6 +16,7 @@ class ReID
     include_files   : Logical
     is_plain        : Logical
     is_partial      : Logical
+    auto_response   : String
     excluded        = String[][ "ReIDChanges.txt" ]
     changes         : Changes
 
@@ -26,7 +27,7 @@ class ReID
       forEach (arg in rewriter=args.rewriter)
         local name = arg.before_first( '=' )
         local param = arg.after_first( '=' )
-        if (arg.begins_with("--"))
+        if (arg.begins_with("-"))
           which (name)
             case "--content"
               include_content = true
@@ -44,6 +45,10 @@ class ReID
               is_partial = true
             case "--plain"
               is_plain = true
+            case "--save", "-s"
+              auto_response = "s"
+            case "--yes", "-y"
+              auto_response = "y"
             others
               println( "Invalid option: " + arg )
               print_usage
@@ -182,6 +187,12 @@ class ReID
                |  --plain
                |    Disables styled text such as bold and underline in the preview of changes.
                |
+               |  --save, -s
+               |    Always answers 's' (save) to the "Make changes now?" prompt.
+               |
+               |  --yes, -y
+               |    Always answers 'y' (yes) to the "Make changes now?" prompt.
+               |
                |  [wildcard_filepath]
                |    Put patterns in quotes to ensure that ReID's non-standard wildcard patterns
                |    are correctly processed. By example:
@@ -191,7 +202,7 @@ class ReID
                |    Finally, '?' can be used to match any single character.
 
     method collect_changes( from_name:String, to_name:String, filepaths:String[] )
-      changes = Changes( &=include_content, &=include_files, &=is_plain, &=is_partial )
+      changes = Changes( &=include_content, &=include_files, &=is_plain, &=is_partial, &=auto_response )
       local replacements = changes.replacements
 
       if (from_name.contains('$'))
@@ -312,11 +323,12 @@ class Changes
     is_plain               : Logical
     is_partial             : Logical
     uses_patterns          : Logical
+    auto_response          : String
     renamed_files_count    = 0
     changed_lines_count    = 0
 
   METHODS
-    method init( include_content, include_files, is_plain, is_partial )
+    method init( include_content, include_files, is_plain, is_partial, auto_response )
 
     method init( file:File )
       # Load changes from file
@@ -516,7 +528,7 @@ class Changes
                |*** WARNING: Especially because this is an early version of ReID. ***
                |
 
-      local choice = Console.input( "Make changes now (y/s/n)? " )
+      local choice = which{ auto_response || Console.input( "Make changes now (y/s/n)? " ) }
       if (choice.count == 0) choice = "n"
       else                   choice = choice.to_lowercase
       which (choice)
@@ -530,7 +542,7 @@ class Changes
           local filename = choice.from(1).trimmed
           if (filename == "") filename = "ReIDChanges.txt"
           contingent
-            if (File.exists(filename))
+            if (File.exists(filename) and not auto_response)
               necessary (Console.input(''*** A file named "$" already exists. Overwrite it (y/n)? ''(filename)).to_lowercase == "y")
             endIf
 

@@ -115,6 +115,12 @@ and the `Beta` file content:
 - `--plain`<br>
     Disables styled text such as bold and underline in the preview of changes.
 
+- `--save`, `-s`<br>
+    Always answers 's' (save) to the "Make changes now?" prompt.
+
+- `--yes`, `-y`<br>
+    Always answers 'y' (yes) to the "Make changes now?" prompt.
+
 - [*wildcard_filepath*]<br>
     Use "quoted/wildcard/filepaths" to ensure that nonstandard wildcards `**`
     and `**/` are recognized. Note: `?` can be used to match a single character.
