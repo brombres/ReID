@@ -117,9 +117,9 @@ and the `Beta` file content:
 
 - [*wildcard_filepath*]<br>
     Use "quoted/wildcard/filepaths" to ensure that nonstandard wildcards `**`
-    and `***/` are recognized. Note: `?` can be used to match a single character.
+    and `**/` are recognized. Note: `?` can be used to match a single character.
 
-        *.rogue     # matches files in the current folder ending with ".rogue"
-        **/*.rogue  # matches files in subfolders but not in the current folder
-        ***/*.rogue # matches files in subfolders or in the current folder.
+        *.rogue      # matches files in the current folder ending with ".rogue"
+        **/*.rogue   # matches files in subfolders or in the current folder.
+        */**/*.rogue # matches files in subfolders but not in the current folder
 

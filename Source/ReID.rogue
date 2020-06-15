@@ -161,7 +161,7 @@ class ReID
                |  --exclude [...]
                |    Files matching any wildcard patterns coming after '--exclude' are skipped.
                |    For example:
-               |      --exclude "***/*.backup" "Build/**"
+               |      --exclude "**/*.backup" "Build/**"
                |
                |    Note: binary files as well as the default change description output file,
                |    "ReIDChanges.txt" are excluded by default.
@@ -185,9 +185,9 @@ class ReID
                |  [wildcard_filepath]
                |    Put patterns in quotes to ensure that ReID's non-standard wildcard patterns
                |    are correctly processed. By example:
-               |      "*.rogue"     # matches files in the current folder ending with ".rogue"
-               |      "**/*.rogue"  # matches files in subfolders but not in the current folder
-               |      "***/*.rogue" # matches files in subfolders or in the current folder.
+               |      "*.rogue"       # matches files in the current folder ending with ".rogue"
+               |      "**/*.rogue"    # matches files in subfolders or in the current folder.
+               |      "*/**/*.rogue"  # matches files in subfolders but not in the current folder
                |    Finally, '?' can be used to match any single character.
 
     method collect_changes( from_name:String, to_name:String, filepaths:String[] )
