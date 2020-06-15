@@ -562,7 +562,19 @@ class FileChanges
 
   METHODS
     method init( changes, filepath, new_filepath=null )
-      if (new_filepath is filepath) new_filepath = null
+      if (new_filepath is filepath)
+        new_filepath = null
+      elseIf (new_filepath and 0 == new_filepath.compare_to(filepath,&ignore_case))
+        Console.error.println "=" * 79
+        local mesg =
+        ''ERROR renaming $ -> $\n\n'' (filepath,new_filepath) +
+          ''Cannot rename filepaths that only differ in capitalization. Either use the '' +
+          ''--content flag to skip filepath renaming or perform a two-step reid. For '' +
+          ''example, "reid xyz temp && reid temp XYZ".\n''
+        Console.error.println mesg.word_wrapped(79)
+        Console.error.println "=" * 79
+        System.exit 1
+      endIf
 
     method add( line:Int32, old_content:String, new_content:String )
       line_changes.add( LineChange(changes,line,old_content,new_content) )
