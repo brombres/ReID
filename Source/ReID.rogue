@@ -561,6 +561,7 @@ class Changes
           endContingent
         others
           println "No changes made."
+          System.exit 1
       endWhich
 
 endClass
