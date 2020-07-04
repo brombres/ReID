@@ -113,6 +113,41 @@ routine verbose_delete( filepath:String )
   endIf
 endRoutine
 
+routine rogo_publish( new_version="":String )
+  local new_date = Date.today->String( &verbose )
+
+  block file = File( "Source/ReID.rogue" )
+    local content = file.load_as_string
+    if (not String.exists(new_version))
+      local version = content.extract_string( ''*define VERSION "$"*'' ).split('.')
+      version.last = (version.last->Int32 + 1)->String
+      new_version = version.join('.')
+    endIf
+    content = content.replacing_pattern( ''define VERSION "$"'', ''define VERSION "$"''(new_version) )
+    content = content.replacing_pattern( ''define DATE "$"'', ''define DATE "$"''(new_date) )
+    file.save( content )
+  endBlock
+
+  block file = File( "README.md" )
+    local content = file.load_as_string
+    local builder = StringBuilder( content.count*1.1 )
+    local is_version_line = false
+    forEach (line in LineReader(content))
+      if (is_version_line)
+        builder.println( "- v$ - $" (new_version,new_date) )
+        is_version_line = false
+      elseIf (line == "## Version")
+        builder.println( line )
+        is_version_line = true
+      else
+        builder.println( line )
+      endIf
+    endForEach
+    file.save( builder->String )
+  endBlock
+endRoutine
+
+
 routine execute( commands:String, &suppress_error )->Logical
   forEach (cmd in LineReader(commands))
     print( "> " ).println( cmd )
