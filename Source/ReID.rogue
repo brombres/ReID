@@ -7,65 +7,53 @@ $define DATE "July 4, 2020"
 
 $requireRogue "1.7.4"
 
+uses Utility/CommandLineParser
+
 ReID()
 
 class ReID
   PROPERTIES
-    is_exact        : Logical
-    include_content : Logical
-    include_files   : Logical
-    is_plain        : Logical
-    is_partial      : Logical
-    auto_response   : String
-    excluded        = String[][ "ReIDChanges.txt" ]
+    command         : Value
+    options         : Value
+
     changes         : Changes
 
   METHODS
     method init
-      local args = System.command_line_arguments.cloned
-      local parsing_exclusions = false
-      forEach (arg in rewriter=args.rewriter)
-        local name = arg.before_first( '=' )
-        local param = arg.after_first( '=' )
-        if (arg.begins_with("-"))
-          which (name)
-            case "--content"
-              include_content = true
-            case "--exact"
-              is_exact = true
-            case "--exclude"
-              if (param.count) excluded.add( param )
-              else             parsing_exclusions = true
-            case "--help"
-              print_usage
-              return
-            case "--files"
-              include_files = true
-            case "--partial"
-              is_partial = true
-            case "--plain"
-              is_plain = true
-            case "--save", "-s"
-              auto_response = "s"
-            case "--yes", "-y"
-              auto_response = "y"
-            others
-              println( "Invalid option: " + arg )
-              print_usage
-              System.exit 1
-          endWhich
-        elseIf (parsing_exclusions)
-          excluded.add( arg )
-        else
-          rewriter.write( arg )
-        endIf
-      endForEach
+      command = CommandLineParser().
+      [
+        option( "--content" )
+        option( "--exact" )
+        option( "--exclude",
+          function( parser:CommandLineParser )
+            if (parser.arg.contains("="))
+              parser.command.ensure_list( "excluded" ).add( parser.arg.after_first('=') )
+            else
+              parser.cur_group = "excluded"
+            endIf
+          endFunction
+        )
+        option( "--help" ), alias( "-h", "--help" )
+        option( "--files" )
+        option( "--partial" )
+        option( "--plain" )
+        option( "--auto_response=" )
+        alias( "--save", "--auto_response=s" ), alias( "-s", "--save" )
+        alias( "--yes",  "--auto_response=y" ), alias( "-y", "--yes" )
+        option( "--rename-cmd=" )
+      ].parse( System.command_line_arguments )
 
-      if (not (include_content or include_files))
-        include_content = true
-        include_files = true
+      options = command//options
+
+      command.ensure_list( "excluded" ).add( "ReIDChanges.txt" )
+
+      if (not (options//content or options//files))
+        options//content = true
+        options//files = true
       endIf
 
+
+      local args = command//args.to_list<<String>>
       which (args.count)
         case 0
           print_usage
@@ -86,14 +74,14 @@ class ReID
             if (pattern.contains('*') or pattern.contains('?'))
               forEach (filepath in File.listing(".",pattern,&ignore_hidden))
                 contingent
-                  necessary (not File.matches_wildcard_pattern(filepath,forEach in excluded))
+                  necessary (not File.matches_wildcard_pattern(filepath,(forEach in command//excluded)->String))
                   filepaths.add( filepath )
                 endContingent
               endForEach
             elseIf (File.is_folder(pattern))
               forEach (filepath in File.listing(pattern,"**",&ignore_hidden))
                 contingent
-                  necessary (not File.matches_wildcard_pattern(filepath,forEach in excluded))
+                  necessary (not File.matches_wildcard_pattern(filepath,(forEach in command//excluded)->String))
                   filepaths.add( filepath )
                 endContingent
               endForEach
@@ -187,6 +175,9 @@ class ReID
                |  --plain
                |    Disables styled text such as bold and underline in the preview of changes.
                |
+               |  --rename-cmd="console cmd"
+               |    Specifies a console command to use to rename
+               |
                |  --save, -s
                |    Always answers 's' (save) to the "Make changes now?" prompt.
                |
@@ -202,14 +193,16 @@ class ReID
                |    Finally, '?' can be used to match any single character.
 
     method collect_changes( from_name:String, to_name:String, filepaths:String[] )
-      changes = Changes( &=include_content, &=include_files, &=is_plain, &=is_partial, &=auto_response )
+      changes = Changes( &include_content=options//content, &include_files=options//files,
+                         &is_plain=options//plain, &is_partial=options//partial, &auto_response=options//auto_response,
+                         &=options )
       local replacements = changes.replacements
 
       if (from_name.contains('$'))
         changes.uses_patterns = true
         replacements[ from_name ] = to_name
 
-      elseIf (is_exact or from_name.contains('/'))
+      elseIf (options//exact or from_name.contains('/'))
         replacements[ from_name ] = to_name
 
       elseIf (from_name.contains('.'))
@@ -324,11 +317,13 @@ class Changes
     is_partial             : Logical
     uses_patterns          : Logical
     auto_response          : String
+    options                : Value
     renamed_files_count    = 0
     changed_lines_count    = 0
 
   METHODS
-    method init( include_content, include_files, is_plain, is_partial, auto_response )
+    method init( include_content, include_files, is_plain, is_partial, auto_response, options )
+      if (auto_response == "") auto_response = null
 
     method init( file:File )
       # Load changes from file
@@ -625,6 +620,7 @@ class FileChanges
             if (File.folder(filepath) != "")
               dest_filepath = "$/$" (File.folder(filepath),dest_filepath)
             endIf
+
             println "> Rename $ -> $" (filepath,dest_filepath)
             File.rename( filepath, dest_filepath )
             ++changes.renamed_files_count
