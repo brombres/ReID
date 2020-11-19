@@ -5,7 +5,7 @@
 $define VERSION "1.4"
 $define DATE "July 4, 2020"
 
-$requireRogue "1.7.4"
+$requireRogue "1.7.8"
 
 uses Utility/CommandLineParser
 
@@ -494,7 +494,8 @@ class Changes
         if (is_plain)
           styled_replacements[ key ] = replacements[ key ]
         else
-          styled_replacements[ key ] = ConsoleStyle().underline->String + replacements[key] + ConsoleStyle().underline_off
+          styled_replacements[ key ] = "$$$" (ConsoleStyle.string(ConsoleStyle.UNDERLINE),
+                                       replacements[key], ConsoleStyle.string(ConsoleStyle.UNDERLINE_OFF))
         endIf
       endForEach
 
@@ -637,7 +638,7 @@ class FileChanges
 
     method bolded( text:String )->String
       if (changes.is_plain) return text
-      return ConsoleStyle().bold->String + text + ConsoleStyle().bold_off->String
+      return ConsoleStyle.string(ConsoleStyle.BOLD)+ text + ConsoleStyle.string(ConsoleStyle.BOLD_OFF)
 
     method is_folder->Logical
       return File.is_folder( filepath )
