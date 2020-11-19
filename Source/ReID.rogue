@@ -33,7 +33,7 @@ class ReID
             endIf
           endFunction
         )
-        option( "--help" ), alias( "-h", "--help" )
+        option( "--help", &aliases=["-h","-?"] )
         option( "--files" )
         option( "--partial" )
         option( "--plain" )
