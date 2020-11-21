@@ -591,7 +591,7 @@ class FileChanges
 
     method apply_changes
       if (line_changes.count)
-        println "[$]" (filepath)
+        println filepath
         println "> Replace identifiers"
         line_changes.sort( (a,b)=>(a.line < b.line) )
 
