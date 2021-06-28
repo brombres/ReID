@@ -70,10 +70,11 @@ and the `Beta` file content:
   matches, which are most often folder paths.
 
 - `reid old$pattern new$pattern [wildcard_filepaths]`<br>
-    Uses Rogue's String.replacing_pattern() syntax. Examples:
+    Uses Rogue's String.replacing_pattern() syntax. Use single quotes to prevent
+    '$' being escaped by the shell. Examples:
 
-        reid "$ and $" "$ & $"        # Alice and Bob -> Alice & Bob
-        reid "$ and $" "$(1) & $(0)"  # Alice and Bob -> Bob & Alice
+        reid '$ and $' '$ & $'        # Alice and Bob -> Alice & Bob
+        reid '$ and $' '$(1) & $(0)'  # Alice and Bob -> Bob & Alice
 
 - `reid ReIDChanges.txt`<br>
   When ReID is run, the previewed changes are saved to a file, and the file

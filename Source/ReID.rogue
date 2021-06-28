@@ -132,10 +132,10 @@ class ReID
                |    matches, which are most often folder paths.
                |
                |  reid old$pattern new$pattern [wildcard_filepaths]
-               |    Uses Rogue's String.replacing_pattern() syntax except using "$<index>" instead
-               |    of "$(index)" to substitute parts by index. Examples:
-               |    reid "$ and $" "$ & $"        # Alice and Bob -> Alice & Bob
-               |    reid "$ and $" "$<1> & $<0>"  # Alice and Bob -> Bob & Alice
+               |    Uses Rogue's String.replacing_pattern() syntax. Use single quotes to prevent
+               |    '$' being escaped by the shell. Examples:
+               |      reid '$ and $' '$ & $'        # Alice and Bob -> Alice & Bob
+               |      reid '$ and $' '$(1) & $(0)'  # Alice and Bob -> Bob & Alice
                |
                |  reid ReIDChanges.txt
                |    When ReID is run, the previewed changes are saved to a file, and the file
@@ -423,7 +423,7 @@ class Changes
       local cur_replacements = which{ styled:styled_replacements || replacements }
       if (uses_patterns)
         forEach (key in cur_replacements.keys)
-          text = text.replacing_pattern( key, cur_replacements[key], "<>" )
+          text = text.replacing_pattern( key, cur_replacements[key] )
         endForEach
       else
         forEach (key in cur_replacements.keys)
