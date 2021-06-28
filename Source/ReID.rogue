@@ -2,8 +2,8 @@
 # ReID.rogue
 # 2020-05-17 by Abe Pralle
 #===============================================================================
-$define VERSION "1.5"
-$define DATE "November 18, 2020"
+$define VERSION "1.6"
+$define DATE "March 15, 2021"
 
 $requireRogue "1.7.8"
 
@@ -521,8 +521,7 @@ class Changes
                |                 e.g. "reid ReIDChanges.txt".
                |  n            - No changes performed.
                |
-               |*** WARNING: Please back up all listed files before proceeding.   ***
-               |*** WARNING: Especially because this is an early version of ReID. ***
+               |*** WARNING: Consider backing up listed files before proceeding. ***
                |
 
       local choice = which{ auto_response || Console.input( "Make changes now (y/s/n)? " ) }

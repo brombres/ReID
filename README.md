@@ -2,7 +2,7 @@
 Command line tool for replacing identifiers within source code and adjusting folder hierarchies.
 
 ## Version
-- v1.4 - July 4, 2020
+- v1.6 - March 15, 2021
 - macOS, Linux, Windows
 - [MIT License](LICENSE)
 - By Abe Pralle
@@ -20,7 +20,7 @@ Here is a sample project `Alpha` with its file structure:
 And its content:
 ![](Images/AlphaContent.png)
 
-From outside the `Alpha` folder we run `reid alpha beta "Alpha/**"` (the quotes are necessary for ReID's special wildcards `**` and `***/`):
+From outside the `Alpha` folder we run `reid alpha beta "Alpha/**"` (the quotes are necessary for ReID's special wildcard `**`):
 ![](Images/ReID.png)
 
 After we confirm the preview of changes, there is the new `Beta` project file structure:
@@ -94,7 +94,7 @@ and the `Beta` file content:
     Files matching any wildcard patterns coming after `--exclude` are skipped.
     For example:
 
-        --exclude "***/*.backup" "Build/**"
+        --exclude "**/*.backup" "Build/**"
 
     Note: binary files as well as the default change description output file,
     `ReIDChanges.txt` are excluded by default.
