@@ -2,7 +2,7 @@
 Command line tool for replacing identifiers within source code and adjusting folder hierarchies.
 
 ## Version
-- v1.6 - March 15, 2021
+- v1.6 - June 28, 2021
 - macOS, Linux, Windows
 - [MIT License](LICENSE)
 - By Abe Pralle
