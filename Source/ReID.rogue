@@ -267,8 +267,8 @@ class ReID
         replacements[ Old_Parts.join("") ] = New_Parts.join("")
 
         # lowerCamelCase
-        local oldCamelCase = [Old_Parts[0].to_lowercase].add(Old_Parts.subset(1)).join("")
-        local newCamelCase = [New_Parts[0].to_lowercase].add(New_Parts.subset(1)).join("")
+        local oldCamelCase = [Old_Parts[0].to_lowercase].[add(Old_Parts.subset(1))].join("")
+        local newCamelCase = [New_Parts[0].to_lowercase].[add(New_Parts.subset(1))].join("")
         replacements[ oldCamelCase ] = newCamelCase
 
         # alllowercase
