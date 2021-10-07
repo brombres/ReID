@@ -221,58 +221,72 @@ class ReID
           elseIf (ch.is_lowercase) has_lowercase  = true
         endForEach
 
-        local Old_Parts : String[]
-        local New_Parts : String[]
+        local old_parts : String[]
+        local new_parts : String[]
         if (has_underscore)
           # Maybe_Capitalized_Serpent_Case
-          Old_Parts = from_name.split( '_' )
-          New_Parts = to_name.split( '_' )
-          if (has_uppercase)
-            if (not has_lowercase)
-              # ALL_CAPS_SERPENT_CASE
-              Old_Parts = Old_Parts.map<<String>>( (part)=>part.to_lowercase.capitalized )
-              New_Parts = New_Parts.map<<String>>( (part)=>part.to_lowercase.capitalized )
-            endIf
+          old_parts = from_name.split( '_' )
+          new_parts = to_name.split( '_' )
+          if (has_uppercase and not has_lowercase)
+            # ALL_CAPS_SERPENT_CASE
+            old_parts = old_parts.map<<String>>( (part)=>part.to_lowercase.capitalized )
+            new_parts = new_parts.map<<String>>( (part)=>part.to_lowercase.capitalized )
           else
-            # serpent_case
-            Old_Parts = Old_Parts.map<<String>>( (part)=>part.capitalized )
-            New_Parts = New_Parts.map<<String>>( (part)=>part.capitalized )
+            # serpent_case or Capitalized_Serpent_Case
+            old_parts = old_parts.map<<String>>( (part)=>part.capitalized )
+            new_parts = new_parts.map<<String>>( (part)=>part.capitalized )
           endIf
+
         elseIf (has_uppercase)
           if (has_lowercase)
             # CamelCase
-            Old_Parts = convert_CamelCase_to_Capitalized_Serpent_Case( from_name ).split( '_' )
-            New_Parts = convert_CamelCase_to_Capitalized_Serpent_Case( to_name ).split( '_' )
+            old_parts = convert_CamelCase_to_Capitalized_Serpent_Case( from_name ).capitalized.split( '_' )
+            new_parts = convert_CamelCase_to_Capitalized_Serpent_Case( to_name ).capitalized.split( '_' )
           else
             # ALLCAPS
-            Old_Parts = [ from_name.to_lowercase.capitalized ]
-            New_Parts = [ to_name.to_lowercase.capitalized ]
+            old_parts = [ from_name.to_lowercase.capitalized ]
+            new_parts = [ to_name.to_lowercase.capitalized ]
           endIf
+
         else
           # allowercase
-          Old_Parts = [ from_name.capitalized ]
-          New_Parts = [ to_name.capitalized ]
+          old_parts = [ from_name.capitalized ]
+          new_parts = [ to_name.capitalized ]
         endIf
 
-        # Capitalized_Serpent_Case
-        replacements[ Old_Parts.join('_') ] = New_Parts.join('_')
+        local add_camel_case_next = has_underscore
+        forEach (pass in 1..2)
+          if (add_camel_case_next)
+            # Make CamelCase changes first so that underscores changes will overwrite
+            # them and take precedence.
 
-        # serpent_case
-        replacements[ Old_Parts.join('_').to_lowercase ] = New_Parts.join('_').to_lowercase
+            # lowerCamelCase
+            local oldCamelCaseParts = [old_parts[0].to_lowercase]
+            if (old_parts.count >= 2) oldCamelCaseParts.add( old_parts.subset(1) )
 
-        # ALL_CAPS_SERPENT_CASE
-        replacements[ Old_Parts.join('_').to_uppercase ] = New_Parts.join('_').to_uppercase
+            local newCamelCaseParts = [new_parts[0].to_lowercase]
+            if (new_parts.count >= 2) newCamelCaseParts.add( new_parts.subset(1) )
 
-        # CamelCase
-        replacements[ Old_Parts.join("") ] = New_Parts.join("")
+            local oldCamelCase = oldCamelCaseParts.join("")
+            local newCamelCase = newCamelCaseParts.join("")
+            replacements[ oldCamelCase ] = newCamelCase
 
-        # lowerCamelCase
-        local oldCamelCase = [Old_Parts[0].to_lowercase].[add(Old_Parts.subset(1))].join("")
-        local newCamelCase = [New_Parts[0].to_lowercase].[add(New_Parts.subset(1))].join("")
-        replacements[ oldCamelCase ] = newCamelCase
+          else
+            # serpent_case
+            replacements[ old_parts.join('_').to_lowercase ] = new_parts.join('_').to_lowercase
 
-        # alllowercase
-        replacements[ Old_Parts.join("").to_lowercase ] = New_Parts.join("").to_lowercase
+            # ALL_CAPS_SERPENT_CASE
+            replacements[ old_parts.join('_').to_uppercase ] = new_parts.join('_').to_uppercase
+
+            # Capitalized_Serpent_Case
+            replacements[ old_parts.join('_') ] = new_parts.join('_')
+          endIf
+
+          add_camel_case_next = not add_camel_case_next
+        endForEach
+
+        # Upper CamelCase added last to have priority over Capitalized_Serpent_Case
+        replacements[ old_parts.join("") ] = new_parts.join("")
       endIf
 
       changes.create_styled_replacements
