@@ -33,7 +33,7 @@ class ReID
             endIf
           endFunction
         )
-        option( "--help", &aliases=["-h","-?"] )
+        option( "--help",    &aliases=["-h","-?"] )
         option( "--filepaths",   &alias="-f" )
         option( "--partial" )
         option( "--package" )
@@ -159,7 +159,7 @@ class ReID
                |    Applies replacements to filepaths only, not to file content. If neither
                |    '--content' nor '--filepaths' are specified then both are implied.
                |
-               |  --help
+               |  --help, -h, -?
                |    Display this help text.
                |
                |  --package
