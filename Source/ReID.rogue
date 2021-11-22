@@ -23,7 +23,7 @@ class ReID
       command = CommandLineParser().
       [
         option( "--content" )
-        option( "--exact" )
+        option( "--exact",   &alias="-e" )
         option( "--exclude",
           function( parser:CommandLineParser )
             if (parser.arg.contains("="))
@@ -141,7 +141,7 @@ class ReID
                |    Applies replacements to file content only, not to filenames or folder paths.
                |    If neither '--content' or '--filepaths' are specified then both are implied.
                |
-               |  --exact
+               |  --exact, -e
                |    The search term is used exactly without added automatic variations.
                |
                |  --exclude=<filepattern>
