@@ -31,7 +31,7 @@ class ReID
             else
               parser.cur_group = "excluded"
             endIf
-          endFunction
+          endFunction, &alias="-x"
         )
         option( "--help",    &aliases=["-h","-?"] )
         option( "--filepaths",   &alias="-f" )
@@ -144,7 +144,7 @@ class ReID
                |  --exact, -e
                |    The search term is used exactly without added automatic variations.
                |
-               |  --exclude=<filepattern>
+               |  --exclude=<filepattern>, -x <filepattern>
                |    Any files matching the given pattern are skipped.
                |
                |  --exclude [...]
