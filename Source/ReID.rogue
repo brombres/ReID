@@ -37,6 +37,7 @@ class ReID
         option( "--filepaths",   &alias="-f" )
         option( "--partial" )
         option( "--package" )
+        option( "--partial", &alias="-p" )
         option( "--plain" )
         option( "--auto_response=" )
         alias( "--save", "--auto_response=s" ), alias( "-s", "--save" )
@@ -167,7 +168,7 @@ class ReID
                |    'reid abc.def abc.xyz' performs content replacement 'abc.def' -> 'abc.xyz'
                |    and folder reorganization 'abc/def/...' -> 'abc/xyz/...'.
                |
-               |  --partial
+               |  --partial, -p
                |    Allows partial matches within standard identifiers that start with a letter
                |    or underscore and end with an alpha-numeric character or underscore. For
                |    example, `reid --partial time date` would replace `timer` with `dater`.
@@ -195,8 +196,8 @@ class ReID
 
     method collect_changes( from_name:String, to_name:String, filepaths:String[] )
       changes = Changes( &include_content=options//content, &include_files=options//filepaths,
-                         &is_plain=options//plain, &is_partial=options//partial, &auto_response=options//auto_response,
-                         &=options )
+                         &is_plain=options//plain, &is_partial=options//partial,
+                         &auto_response=options//auto_response, &=options )
       local replacements = changes.replacements
 
       if (from_name.contains('$'))
