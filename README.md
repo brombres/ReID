@@ -8,10 +8,8 @@ Command line tool for replacing identifiers within source code and adjusting fol
 - By Abe Pralle
 
 ## Installation
-1. Install the [Rogue](https://github.com/AbePralle/Rogue) language.
-2. Run `rogo` in this folder to compile **ReID**.
-    - On macOS and Linux a launcher will be created here: `/usr/local/bin/reid`.
-    - On Windows the build process will print the necessary folder to add to the system PATH environment variable.
+1. Install [morlock.sh](https://morlock.sh)
+2. `morlock install abepralle/reid`
 
 ## Example
 Here is a sample project `Alpha` with its file structure:
@@ -20,7 +18,7 @@ Here is a sample project `Alpha` with its file structure:
 And its content:
 ![](Images/AlphaContent.png)
 
-From outside the `Alpha` folder we run `reid alpha beta "Alpha/**"` (the quotes are necessary for ReID's special wildcard `**`):
+From outside the `Alpha` folder we run `reid --partial alpha beta "Alpha/**"` (the quotes are necessary for ReID's special wildcard `**`). The screenshot does not include the necessary `--partial` as the screenshot was taken when partial matches were allowed by default.
 ![](Images/ReID.png)
 
 After we confirm the preview of changes, there is the new `Beta` project file structure:
@@ -32,7 +30,6 @@ and the `Beta` file content:
 ## Usage
 
     reid [options] OldID NewID           [wildcard_filepaths] [--exclude] [...]
-    reid old.package.id  new.package.id  [wildcard_filepaths] [--exclude] [...]
     reid old/folder/path new/folder/path [wildcard_filepaths] [--exclude] [...]
     reid old$pattern new$pattern         [wildcard_filepaths] [--exclude] [...]
     reid ReIDChanges.txt
@@ -57,14 +54,6 @@ and the `Beta` file content:
   file for editing (e.g. `ReIDChanges.txt`), then running
   `reid ReIDChanges.txt`.
 
-- `reid old.package.id new.package.id [wildcard_filepaths]`<br>
-  Only two id variations are replaced when dots (`.`) are present in the ID:
-
-        old.package.id -> new.package.id
-        old/package/id -> new/package/id
-
-  Passing `--exact` limits the search to the dot-separated variation.
-
 - `reid old/folder/path new/folder/path [wildcard_filepaths]`<br>
   When slashes are present in the search term, ReID replaces only exact
   matches, which are most often folder paths.
@@ -81,14 +70,14 @@ and the `Beta` file content:
   is edited to further adjust the changes, then run `reid <filename>` to
   read and then apply those edited changes.
 
-- `--content`<br>
+- `--content`, `-c`<br>
     Applies replacements to file content only, not to filenames or folder paths.
-    If neither `--content` nor `--files` are specified then both are implied.
+    If neither `--content` nor `--filepaths` are specified then both are implied.
 
-- `--exact`<br>
+- `--exact`, `-e`<br>
     The search term is used exactly without added automatic variations.
 
-- `--exclude=<filepattern>`<br>
+- `--exclude=<filepattern>`, `-x <filepattern>`<br>
     Any files matching the given pattern are skipped.
 
 - `--exclude [...]`<br>
@@ -100,14 +89,20 @@ and the `Beta` file content:
     Note: binary files as well as the default change description output file,
     `ReIDChanges.txt` are excluded by default.
 
-- `--files`<br>
+- `--filepaths`<br>
     Applies replacements to filenames and folder paths only, not to file content.
-    If neither `--content` nor `--files` are specified then both are implied.
+    If neither `--content` nor `--filepaths` are specified then both are implied.
 
-- `--help`<br>
+- `--help`, `-h`, `-?`<br>
     Display this help text.
 
-- `--partial`<br>
+- `--package`<br>
+    Treats dots in the old ID as Java-style package path separators and renames
+    both package "dot names" and folder paths accordingly. For example,
+    'reid abc.def abc.ghi' performs content replacement 'abc.def' -> 'abc.ghi'
+    and folder reorganization 'abc/def/xyz' -> 'abc/ghi/xyz'.
+
+- `--partial`, `-p`<br>
     Allows partial matches within standard identifiers that start with a letter
     or underscore and end with an alpha-numeric character or underscore. For
     example, `reid --partial time date` would replace `timer` with `dater`.
