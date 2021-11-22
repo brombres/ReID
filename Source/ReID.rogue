@@ -59,7 +59,7 @@ class ReID
       which (args.count)
         case 0
           print_usage
-          System.exit 1
+          System.exit
 
         case 1
           if (File.is_folder(args.first))
