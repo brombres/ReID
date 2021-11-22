@@ -36,6 +36,7 @@ class ReID
         option( "--help", &aliases=["-h","-?"] )
         option( "--filepaths",   &alias="-f" )
         option( "--partial" )
+        option( "--package" )
         option( "--plain" )
         option( "--auto_response=" )
         alias( "--save", "--auto_response=s" ), alias( "-s", "--save" )
@@ -99,7 +100,6 @@ class ReID
       println @|
                |USAGE
                |  reid [options] OldID NewID           [wildcard_filepaths] [--exclude] [...]
-               |  reid old.package.id  new.package.id  [wildcard_filepaths] [--exclude] [...]
                |  reid old/folder/path new/folder/path [wildcard_filepaths] [--exclude] [...]
                |  reid old$pattern new$pattern         [wildcard_filepaths] [--exclude] [...]
                |  reid ReIDChanges.txt
@@ -120,12 +120,6 @@ class ReID
                |    then proceed with the changes immediately or save them to an intermediate
                |    file for editing (e.g. "ReIDChanges.txt"), then running
                |    "reid ReIDChanges.txt".
-               |
-               |  reid old.package.id new.package.id [wildcard_filepaths]
-               |    Only two id variations are replaced when dots ('.') are present in the ID:
-               |      old.package.id -> new.package.id
-               |      old/package/id -> new/package/id
-               |    Passing '--exact' limits the search to the dot-separated variation.
                |
                |  reid old/folder/path new/folder/path [wildcard_filepaths]
                |    When slashes are present in the search term, ReID replaces only exact
@@ -167,6 +161,12 @@ class ReID
                |  --help
                |    Display this help text.
                |
+               |  --package
+               |    Treats dots in the old ID as Java-style package path separators and renames
+               |    both package "dot names" and folder paths accordingly. For example,
+               |    'reid abc.def abc.xyz' performs content replacement 'abc.def' -> 'abc.xyz'
+               |    and folder reorganization 'abc/def/...' -> 'abc/xyz/...'.
+               |
                |  --partial
                |    Allows partial matches within standard identifiers that start with a letter
                |    or underscore and end with an alpha-numeric character or underscore. For
@@ -206,8 +206,8 @@ class ReID
       elseIf (options//exact or from_name.contains('/'))
         replacements[ from_name ] = to_name
 
-      elseIf (from_name.contains('.'))
-        # Using a dot notation - keep it exact case but also include folders
+      elseIf (options//package)
+        # Replace package names and folder structure.
         replacements[ from_name ] = to_name
         replacements[ from_name.split('.').join("/") ] = to_name.split('.').join("/")
 
