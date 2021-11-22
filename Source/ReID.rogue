@@ -536,7 +536,7 @@ class Changes
                |                 e.g. "reid ReIDChanges.txt".
                |  n            - No changes performed.
                |
-               |*** WARNING: Consider backing up listed files before proceeding. ***
+               |*** CAUTION: Consider backing up listed files before proceeding. ***
                |
 
       local choice = which{ auto_response || Console.input( "Make changes now (y/s/n)? " ) }
