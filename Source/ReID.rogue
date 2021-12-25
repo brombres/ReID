@@ -35,6 +35,7 @@ class ReID
         )
         option( "--grep",      &alias="-g"          )
         option( "--help",      &aliases=["-h","-?"] )
+        option( "--ignore=",   &alias="-i", &multi  )
         option( "--filepaths", &alias="-f"          )
         option( "--partial" )
         option( "--package" )
@@ -171,6 +172,10 @@ class ReID
                |
                |  --help, -h, -?
                |    Display this help text.
+               |
+               |  --ignore=<pattern>, -i <pattern>
+               |    Ignores any portions of lines that match the given pattern. Can specify
+               |    multiple times. Example: --ignore="#*" -i "//*"
                |
                |  --package
                |    Treats dots in the old ID as Java-style package path separators and renames
@@ -448,6 +453,15 @@ class Changes
       endIf
 
     method grep( text:String )->Logical
+      forEach (pattern in options//ignore)
+        local span = text.locate_pattern( pattern )
+        if (span)
+          if (grep(text.leftmost(span.value.index))) return true
+          if (grep(text.unleft(span.value.limit)))   return true
+          return false
+        endIf
+      endForEach
+
       local cur_replacements = replacements
       if (uses_patterns)
         forEach (key in cur_replacements.keys)
@@ -461,6 +475,16 @@ class Changes
       return false
 
     method apply_replacements( text:String, &styled )->String
+      forEach (pattern in options//ignore)
+        local span = text.locate_pattern( pattern )
+        if (span)
+          local left  = text.leftmost( span.value.index )
+          local mid   = text.substring( span.value )
+          local right = text.unleft( span.value.limit )
+          return apply_replacements(left,&=styled) + mid + apply_replacements(right,&=styled)
+        endIf
+      endForEach
+
       local cur_replacements = which{ styled:styled_replacements || replacements }
       if (uses_patterns)
         forEach (key in cur_replacements.keys)

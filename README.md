@@ -96,6 +96,10 @@ and the `Beta` file content:
 - `--help`, `-h`, `-?`<br>
     Display this help text.
 
+- `--ignore=<pattern>`, `-i <pattern>`<br>
+    Ignores any portions of lines that match the given pattern. Can specify
+    multiple times. Example: --ignore="#*" -i "//*"
+
 - `--grep`, `-g`<br>
     Search for the given IDs or patterns without making changes.
     Only one ID or pattern should be supplied instead of the usual two.
