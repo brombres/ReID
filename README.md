@@ -96,6 +96,11 @@ and the `Beta` file content:
 - `--help`, `-h`, `-?`<br>
     Display this help text.
 
+- `--grep`, `-g`<br>
+    Search for the given IDs or patterns without making changes.
+    Only one ID or pattern should be supplied instead of the usual two.
+    Matching lines can be saved, edited, and applied using ReID.
+
 - `--package`<br>
     Treats dots in the old ID as Java-style package path separators and renames
     both package "dot names" and folder paths accordingly. For example,

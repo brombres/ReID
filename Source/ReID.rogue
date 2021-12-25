@@ -14,7 +14,7 @@ ReID()
 class ReID
   PROPERTIES
     command         : Value
-    options         : Value
+    options = {}    : Value
 
     changes         : Changes
 
@@ -33,8 +33,9 @@ class ReID
             endIf
           endFunction, &alias="-x"
         )
-        option( "--help",    &aliases=["-h","-?"] )
-        option( "--filepaths",   &alias="-f" )
+        option( "--grep",      &alias="-g"          )
+        option( "--help",      &aliases=["-h","-?"] )
+        option( "--filepaths", &alias="-f"          )
         option( "--partial" )
         option( "--package" )
         option( "--partial", &alias="-p" )
@@ -54,8 +55,12 @@ class ReID
         options//filepaths = true
       endIf
 
-
       local args = command//args.to_list<<String>>
+      if (args.count > 0 and options//grep)
+        # duplicate first arg as second arg
+        args.insert( args.first )
+      endIf
+
       which (args.count)
         case 0
           print_usage
@@ -65,7 +70,7 @@ class ReID
           if (File.is_folder(args.first))
             throw Error( ''Expected a change list but "$" is a folder.'' (args.first) )
           endIf
-          changes = Changes( File(args.first) )
+          changes = Changes( File(args.first), options )
           changes.preview_and_apply
 
         others
@@ -158,6 +163,11 @@ class ReID
                |  --filepaths, -f
                |    Applies replacements to filepaths only, not to file content. If neither
                |    '--content' nor '--filepaths' are specified then both are implied.
+               |
+               |  --grep, -g
+               |    Search for the given IDs or patterns without making changes.
+               |    Only one ID or pattern should be supplied instead of the usual two.
+               |    Matching lines can be saved, edited, and applied using ReID.
                |
                |  --help, -h, -?
                |    Display this help text.
@@ -341,7 +351,7 @@ class Changes
     method init( include_content, include_files, is_plain, is_partial, auto_response, options )
       if (auto_response == "") auto_response = null
 
-    method init( file:File )
+    method init( file:File, options )
       # Load changes from file
       local cur_file_changes : FileChanges
 
@@ -353,9 +363,12 @@ class Changes
           local parts = line.after_first(' ').split("->")
           if (parts.count == 2)
             replacements[ parts.first.trimmed ] = parts.last.trimmed
-          else
-            throw SyntaxError( "Syntax error on line $: $" (index+1,line) )
           endIf
+
+        elseIf (line.begins_with("grep "))
+          local pattern = line.after_first(' ').trimmed
+          replacements[ pattern ] = pattern
+          options//greplace = true
 
         elseIf (line.begins_with("file "))
           cur_file_changes = FileChanges( this, line.after_first(' ').trimmed )
@@ -434,6 +447,19 @@ class Changes
         println "$ changed" ("# line".pluralized(changed_lines_count))
       endIf
 
+    method grep( text:String )->Logical
+      local cur_replacements = replacements
+      if (uses_patterns)
+        forEach (key in cur_replacements.keys)
+          if (text.contains_pattern(key)) return true
+        endForEach
+      else
+        forEach (key in cur_replacements.keys)
+          if (text.contains(key)) return true
+        endForEach
+      endIf
+      return false
+
     method apply_replacements( text:String, &styled )->String
       local cur_replacements = which{ styled:styled_replacements || replacements }
       if (uses_patterns)
@@ -488,19 +514,37 @@ class Changes
 
     method collect_changes( filepath:String )
       local changes : FileChanges
-      local updated_filepath = apply_replacements( filepath )
-      if (include_files and updated_filepath != filepath)
-        changes = FileChanges( this, filepath, updated_filepath )
-      endIf
 
-      if (include_content and File.is_valid_utf8(filepath))
-        forEach (line at index in LineReader(File(filepath)))
-          local updated_line = apply_replacements( line )
-          if (updated_line != line)
-            if (not changes) changes = FileChanges( this, filepath )
-            changes.add( index+1, line, after_whitespace(updated_line) )
-          endIf
-        endForEach
+      if (options//grep)
+        if (grep(filepath))
+          changes = FileChanges( this, filepath, filepath )
+        endIf
+
+        if (include_content and File.is_valid_utf8(filepath))
+          forEach (line at index in LineReader(File(filepath)))
+            if (grep(line))
+              if (not changes) changes = FileChanges( this, filepath )
+              changes.add( index+1, line, after_whitespace(line) )
+            endIf
+          endForEach
+        endIf
+
+      else
+        local updated_filepath = apply_replacements( filepath )
+        if (include_files and updated_filepath != filepath)
+          changes = FileChanges( this, filepath, updated_filepath )
+        endIf
+
+        if (include_content and File.is_valid_utf8(filepath))
+          forEach (line at index in LineReader(File(filepath)))
+            local updated_line = apply_replacements( line )
+            if (updated_line != line)
+              if (not changes) changes = FileChanges( this, filepath )
+              changes.add( index+1, line, after_whitespace(updated_line) )
+            endIf
+          endForEach
+        endIf
+
       endIf
 
       if (changes) file_changes.add( changes )
@@ -516,10 +560,17 @@ class Changes
       endForEach
 
     method preview_and_apply
-      forEach (key in replacements.keys)
-        println "replace $ -> $" (key,replacements[key])
-      endForEach
-      println
+      if (options//grep)
+        forEach (key in replacements.keys)
+          println "grep $" (key)
+        endForEach
+        println
+      elseIf (not options//greplace)
+        forEach (key in replacements.keys)
+          println "replace $ -> $" (key,replacements[key])
+        endForEach
+        println
+      endIf
 
       if (file_changes.is_empty)
         println "*** No changes required; no IDs match search patterns. ***"
@@ -527,21 +578,39 @@ class Changes
       endIf
 
       println "# REID PENDING CHANGES"
-      println ((forEach in file_changes)->String(&styled))
+      print   ((forEach in file_changes)->String(&styled)).flush
 
-      println @|Review the changes above and then choose whether to proceed with changes (y/s/n):
-               |  y            - Indicated changes will be performed.
-               |  s [filepath] - Save changes to filepath (default: "ReIDChanges.txt"). Then edit as
-               |                 desired, deleting or modifying listed changes, and then run
-               |                 e.g. "reid ReIDChanges.txt".
-               |  n            - No changes performed.
-               |
-               |*** CAUTION: Consider backing up listed files before proceeding. ***
-               |
+      local cmd : String
+      if (options//grep)
+        println @|Review the matching lines above and then choose whether to save or not.
+                 |  y            - Save changes to default filepath "ReIDChanges.txt". Then edit as
+                 |                 desired, deleting or modifying listed lines, and then run
+                 |                 e.g. "reid ReIDChanges.txt".
+                 |  s filepath   - Save changes to named filepath. Then edit as desired, deleting
+                 |                 or modifying listed lines, and then run e.g.
+                 |                 "reid ReIDChanges.txt".
+                 |  n            - No save performed.
+                 |
+        cmd = which{ auto_response || Console.input( "Save matches (y/s/n)? " ) }
+      else
+        println @|Review the changes above and then choose whether to proceed with changes (y/s/n):
+                 |  y            - Indicated changes will be performed.
+                 |  s [filepath] - Save changes to filepath (default: "ReIDChanges.txt"). Then edit as
+                 |                 desired, deleting or modifying listed changes, and then run
+                 |                 e.g. "reid ReIDChanges.txt".
+                 |  n            - No changes performed.
+                 |
+                 |*** CAUTION: Consider backing up listed files before proceeding. ***
+                 |
+        cmd = which{ auto_response || Console.input( "Make changes now (y/s/n)? " ) }
+      endIf
 
-      local choice = which{ auto_response || Console.input( "Make changes now (y/s/n)? " ) }
+      local choice = cmd.before_first(' ')
       if (choice.count == 0) choice = "n"
       else                   choice = choice.to_lowercase
+
+      if (options//grep and choice == "y") choice = "s"
+
       which (choice)
         case "y"
           println
@@ -550,7 +619,7 @@ class Changes
           apply_changes
 
         case "s"
-          local filename = choice.from(1).trimmed
+          local filename = cmd.after_first(' ').trimmed
           if (filename == "") filename = "ReIDChanges.txt"
           contingent
             if (File.exists(filename) and not auto_response)
@@ -559,10 +628,17 @@ class Changes
 
             local builder = StringBuilder()
 
-            forEach (key in replacements.keys)
-              builder.println "replace $ -> $" (key,replacements[key])
-            endForEach
-            builder.println
+            if (options//grep)
+              forEach (key in replacements.keys)
+                builder.println "grep $" (key)
+              endForEach
+              builder.println
+            else
+              forEach (key in replacements.keys)
+                builder.println "replace $ -> $" (key,replacements[key])
+              endForEach
+              builder.println
+            endIf
 
             builder.println (forEach in file_changes)
             File.save( filename, builder->String )
