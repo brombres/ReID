@@ -2,8 +2,8 @@
 # ReID.rogue
 # 2020-05-17 by Abe Pralle
 #===============================================================================
-$define VERSION "1.8"
-$define DATE "November 21, 2021"
+$define VERSION "1.9"
+$define DATE "December 26, 2021"
 
 $requireRogue "1.7.8"
 
