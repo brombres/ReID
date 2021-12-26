@@ -108,7 +108,7 @@ and the `Beta` file content:
 - `--package`<br>
     Treats dots in the old ID as Java-style package path separators and renames
     both package "dot names" and folder paths accordingly. For example,
-    'reid abc.def abc.ghi' performs content replacement 'abc.def' -> 'abc.ghi'
+    'reid --package abc.def abc.ghi' performs content replacement 'abc.def' -> 'abc.ghi'
     and folder reorganization 'abc/def/xyz' -> 'abc/ghi/xyz'.
 
 - `--partial`, `-p`<br>
