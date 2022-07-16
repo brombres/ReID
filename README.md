@@ -1,11 +1,13 @@
 # ReID
 Command line tool for replacing identifiers within source code and adjusting folder hierarchies.
 
-## Version
-- v1.9 - December 26, 2021
-- macOS, Linux, Windows
-- [MIT License](LICENSE)
-- By Abe Pralle
+About     | Current Release
+----------|-----------------------
+Version   | -am
+Date      | July 16, 2022
+Platforms | Windows, macOS, Linux
+License   | [MIT License](LICENSE)
+Author    | Abe Pralle
 
 ## Installation
 1. Install [morlock.sh](https://morlock.sh)
