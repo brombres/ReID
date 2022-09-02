@@ -7,7 +7,7 @@ $define DATE    "July 16, 2022"
 
 $requireRogue "1.7.8"
 
-uses Utility/CommandLineParser
+uses Console/CommandLineParser
 
 ReID()
 
@@ -503,7 +503,7 @@ class Changes
 
       if (look_for == "") return text
 
-      local is_id_start = look_for[0].is_identifier( &start )
+      local is_id_start = look_for[0].is_identifier_start
       local is_id_end   = look_for.last.is_identifier
       if (not (is_id_start or is_id_end))
         return text.replacing( look_for, replace_with )

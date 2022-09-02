@@ -186,7 +186,7 @@ routine rogo_commit( new_version:String )
   if (not String.exists(new_version)) throw Error( "Expected version number after 'rogo commit'." )
   rogo_update_version( new_version )
 
-  if (not System.find_program("git")) throw Error( "Git must be installed." )
+  if (not System.find_executable("git")) throw Error( "Git must be installed." )
   if (project_has_uncommitted_changes)
     execute ''git commit -am "[v$]"'' (new_version)
   else
@@ -209,7 +209,7 @@ endRoutine
 routine rogo_publish( new_version:String )
   # Updates source and README version number, commits, and publishes a release to GitHub.
   if (not String.exists(new_version)) throw Error( "Expected version number after 'rogo publish'." )
-  if (not System.find_program("gh")) throw Error( "The GitHub command line tool 'gh' must be installed." )
+  if (not System.find_executable("gh")) throw Error( "The GitHub command line tool 'gh' must be installed." )
   rogo_commit( new_version )
 
   # These can be hard-coded to suit your project
