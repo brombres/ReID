@@ -234,7 +234,7 @@ routine rogo_publish( new_version:String )
   endIf
 
   if (cur_branch != main_branch)
-    if (not Console.input("$ will be merged into $. Continue? ").to_lowercase.begins_with('y')) return
+    if (not Console.input("$ will be merged into $. Continue? "(cur_branch,main_branch)).to_lowercase.begins_with('y')) return
     execute "git push origin $"(cur_branch)
     execute "git checkout $"(main_branch)
     execute "git pull"
@@ -253,7 +253,7 @@ routine compile_rogue
   local c_filepath = "Build/$-$" (Build.PROJECT,System.os)
   local flags = Build.ROGUEC_FLAGS
   if (Build.BUILD_MODE == "debug") flags = flags.with_suffix(' ') + "--debug"
-  execute "r2 $ $ --main --output=$ --target=Console,C,$"...
+  execute "roguec $ $ --main --output=$ --target=Console,C,$"...
           (File(src_filepath).esc,flags,File(c_filepath).esc,System.os)
 endRoutine
 
