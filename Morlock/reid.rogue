@@ -1,12 +1,12 @@
 class ReidPackage : Package
   # Base class Package is defined here:
-  # https://github.com/AbePralle/Morlock/blob/main/Source/Package.rogue
+  # https://github.com/brombres/Morlock/blob/main/Source/Package.rogue
   PROPERTIES
-    name = "abepralle/reid"
+    name = "brombres/reid"
 
   METHODS
     method init
-      dependency "abepralle/rogue@1.12"
+      dependency "brombres/rogue@2.12"
       scan_repo_releases
 endClass
 

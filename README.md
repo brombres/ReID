@@ -7,11 +7,11 @@ Version   | 2.0.2
 Date      | September 16, 2022
 Platforms | Windows, macOS, Linux
 License   | [MIT License](LICENSE)
-Author    | Abe Pralle
+Author    | Brom Bresenham
 
 ## Installation
 1. Install [morlock.sh](https://morlock.sh)
-2. `morlock install abepralle/reid`
+2. `morlock install brombres/reid`
 
 ## Example
 Here is a sample project `Alpha` with its file structure:

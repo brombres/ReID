@@ -1,6 +1,6 @@
 #===============================================================================
 # ReID.rogue
-# 2020-05-17 by Abe Pralle
+# 2020-05-17 by Brom Bresenham
 #===============================================================================
 $define VERSION "2.0.2"
 $define DATE    "September 16, 2022"
@@ -105,7 +105,7 @@ class ReID
 
     method print_usage
       println "ReID v$"(VERSION)
-      println "$ by Abe Pralle"(DATE)
+      println "$ by Brom Bresenham"(DATE)
       println @|
                |USAGE
                |  reid [options] OldID NewID           [wildcard_filepaths] [--exclude] [...]
