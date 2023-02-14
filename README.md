@@ -3,7 +3,7 @@ Command line tool for replacing identifiers within source code and adjusting fol
 
 About     | Current Release
 ----------|-----------------------
-Version   | 2.0.3
+Version   | 2.0.4
 Date      | February 14, 2023
 Platforms | Windows, macOS, Linux
 License   | [MIT License](LICENSE)
