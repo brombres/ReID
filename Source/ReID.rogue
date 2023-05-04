@@ -59,6 +59,21 @@ class ReID
       endIf
 
       local args = command//args.to_list<<String>>
+
+      forEach (arg in rewriter=args.rewriter)
+        if (arg.contains('\\'))
+          # Convert any \X -> X
+          local result = String()
+          local iterator = arg.iterator
+          forEach (ch in iterator)
+            if (ch == '\\' and iterator.has_another) ch = iterator.read
+            result.print( ch )
+          endForEach
+          arg = result
+        endIf
+        rewriter.write( arg )
+      endForEach
+
       if (args.count > 0 and options//grep)
         # duplicate first arg as second arg
         args.insert( args.first )
