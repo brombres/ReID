@@ -2,8 +2,8 @@
 # ReID.rogue
 # 2020-05-17 by Brom Bresenham
 #===============================================================================
-$define VERSION "2.0.4"
-$define DATE    "February 14, 2023"
+$define VERSION "2.1"
+$define DATE    "May 4, 2023"
 
 $requireRogue "2.0.9"
 
