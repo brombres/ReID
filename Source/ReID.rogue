@@ -624,8 +624,8 @@ class Changes
       if (options//grep)
         println @|Review the matching lines above and then choose whether to save or not.
                  |  y            - Save changes to default filepath "ReIDChanges.txt". Then edit as
-                 |                 desired, deleting or modifying listed lines, and then run
-                 |                 e.g. "reid ReIDChanges.txt".
+                 |                 desired, deleting or modifying listed lines, and then run e.g.:
+                 |                 reid ReIDChanges.txt
                  |  s filepath   - Save changes to named filepath. Then edit as desired, deleting
                  |                 or modifying listed lines, and then run e.g.
                  |                 "reid ReIDChanges.txt".
@@ -636,8 +636,8 @@ class Changes
         println @|Review the changes above and then choose whether to proceed with changes (y/s/n):
                  |  y            - Indicated changes will be performed.
                  |  s [filepath] - Save changes to filepath (default: "ReIDChanges.txt"). Then edit as
-                 |                 desired, deleting or modifying listed changes, and then run
-                 |                 e.g. "reid ReIDChanges.txt".
+                 |                 desired, deleting or modifying listed changes, and then run e.g.:
+                 |                 reid ReIDChanges.txt
                  |  n            - No changes performed.
                  |
                  |*** CAUTION: Consider backing up listed files before proceeding. ***
