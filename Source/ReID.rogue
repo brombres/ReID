@@ -13,7 +13,7 @@ ReID()
 
 class ReID
   PROPERTIES
-    command : Value
+    command : Variant
     options = @{}
 
     changes : Changes
@@ -364,7 +364,7 @@ class Changes
     is_partial             : Logical
     uses_patterns          : Logical
     auto_response          : String
-    options                : Value
+    options                : Variant
     renamed_files_count    = 0
     changed_lines_count    = 0
 
