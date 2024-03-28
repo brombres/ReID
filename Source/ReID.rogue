@@ -99,19 +99,22 @@ class ReID
             if (pattern.contains('*') or pattern.contains('?'))
               forEach (filepath in File(".").listing(FilePattern(pattern),&ignore_hidden))
                 contingent
-                  necessary (not FilePattern(forEach in command//excluded->String).matches(filepath))
+                  necessary (not FilePattern((forEach in command//excluded)->String).matches(filepath))
                   filepaths.add( filepath )
                 endContingent
               endForEach
             elseIf (File(pattern).is_folder)
               forEach (filepath in File(pattern).listing("**",&ignore_hidden))
                 contingent
-                  necessary (not FilePattern(forEach in command//excluded->String).matches(filepath))
+                  necessary (not FilePattern((forEach in command//excluded)->String).matches(filepath))
                   filepaths.add( filepath )
                 endContingent
               endForEach
             else
-              filepaths.add( pattern )
+              contingent
+                necessary (not FilePattern((forEach in command//excluded)->String).matches(pattern))
+                filepaths.add( pattern )
+              endContingent
             endIf
           endForEach
 
