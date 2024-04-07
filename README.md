@@ -3,8 +3,8 @@ Command line tool for replacing identifiers within source code and adjusting fol
 
 About     | Current Release
 ----------|-----------------------
-Version   | 2.1
-Date      | May 4, 2023
+Version   | 2.2
+Date      | April 7, 2024
 Platforms | Windows, macOS, Linux
 License   | [MIT License](LICENSE)
 Author    | Brom Bresenham
