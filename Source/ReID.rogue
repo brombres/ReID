@@ -369,8 +369,9 @@ class Changes
     uses_patterns            : Logical
     auto_response            : String
     options                  : Variant
-    renamed_files_count      = 0
-    changed_lines_count      = 0
+    renamed_files_count      : Int
+    changed_lines_count      : Int
+    rename_all               : Logical
 
   METHODS
     method init( include_content, include_files, is_plain, is_partial, auto_response, options )
@@ -444,8 +445,26 @@ class Changes
           local new_file = File( entry.value )
           File(new_file.folder).create_folder
           println "> Rename $ -> $" (old_file,new_file)
-          old_file.rename( new_file )
-          ++renamed_files_count
+          contingent
+            sufficient (rename_all or not new_file.exists)
+            println "[WARNING] '$' already exists and will be overwritten. Proceed?"(new_file)
+            loop
+              if local input = Console.input( "Choose: (y)es / (n)o / yes to (a)ll> " )
+                sufficient (input == "y" or input == "yes")
+                if (input == "n" or input == "no")
+                  println "(Skipping)"
+                  escapeContingent
+                endIf
+                if (input == "a" or input == "all")
+                  rename_all = true
+                  sufficient (true)
+                endIf
+              endIf
+            endLoop
+          satisfied
+            old_file.rename( new_file )
+            ++renamed_files_count
+          endContingent
         endIf
       endForEach
 
@@ -735,7 +754,10 @@ class FileChanges
       line_changes.add( LineChange(changes,line,old_content,new_content) )
 
     method apply_changes
+      local any_changes = false
+
       if (line_changes.count)
+        any_changes = true
         println "> Replace identifiers in " + filepath
         line_changes.sort( (a,b)=>(a.line < b.line) )
 
@@ -764,7 +786,7 @@ class FileChanges
         endIf
       endIf
 
-      println
+      if (any_changes) println
 
     method bolded( text:String )->String
       if (changes.is_plain) return text
