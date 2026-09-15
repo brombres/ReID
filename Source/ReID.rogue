@@ -756,10 +756,7 @@ class Changes
         return false
       endIf
 
-      local temp_folder : String
-      if (System.is_windows) temp_folder = System.env//TEMP || System.env//TMP || "."
-      else                   temp_folder = System.env//TMPDIR || "/tmp"
-      local temp_file = File( temp_folder ) / "ReIDChanges-$.txt" (System.time_ms)
+      local temp_file = System.temp_folder / "ReIDChanges-$.txt" (System.time_ms)
 
       if (not temp_file.save(to_change_list))
         Console.error.println ''*** ERROR: Unable to write temporary file "$". ***'' (temp_file)
