@@ -72,6 +72,11 @@ and the `Beta` file content:
   is edited to further adjust the changes, then run `reid <filename>` to
   read and then apply those edited changes.
 
+  Alternatively, answer `e` at the "Make changes now?" prompt to edit the
+  pending changes in Vim. When Vim exits, the edited list is loaded and
+  previewed as if `reid <filename>` had been run on it. Requires `vim` on
+  the system PATH.
+
 - `--content`, `-c`<br>
     Applies replacements to file content only, not to filenames or folder paths.
     If neither `--content` nor `--filepaths` are specified then both are implied.

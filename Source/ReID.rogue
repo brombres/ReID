@@ -379,6 +379,7 @@ class Changes
 
     method init( file:File, options )
       # Load changes from file
+      is_plain = options//plain->Logical
       local cur_file_changes : FileChanges
 
       forEach (line at index in LineReader(file))
@@ -654,7 +655,6 @@ class Changes
       println "# REID PENDING CHANGES"
       print   (((forEach in file_changes)->String(&styled)).[flush])
 
-      local cmd : String
       if (options//grep)
         println @|Review the matching lines above and then choose whether to save or not.
                  |  y            - Save changes to default filepath "ReIDChanges.txt". Then edit as
@@ -663,67 +663,133 @@ class Changes
                  |  s filepath   - Save changes to named filepath. Then edit as desired, deleting
                  |                 or modifying listed lines, and then run e.g.
                  |                 reid ReIDChanges.txt
+                 |  e            - Edit the matches in Vim, then review and apply the result.
                  |  n            - No save performed.
                  |
-        cmd = which{ auto_response || Console.input( "Save matches (y/s/n)? " ) }
       else
-        println @|Review the changes above and then choose whether to proceed with changes (y/s/n):
+        println @|Review the changes above and then choose whether to proceed with changes (y/s/e/n):
                  |  y            - Indicated changes will be performed.
                  |  s [filepath] - Save changes to filepath (default: "ReIDChanges.txt"). Then edit as
                  |                 desired, deleting or modifying listed changes, and then run e.g.:
                  |                 reid ReIDChanges.txt
+                 |  e            - Edit the changes in Vim, then review and apply the result.
                  |  n            - No changes performed.
                  |
                  |*** CAUTION: Consider backing up listed files before proceeding. ***
                  |
-        cmd = which{ auto_response || Console.input( "Make changes now (y/s/n)? " ) }
       endIf
 
-      local choice = cmd.before_first(' ')
-      if (choice.count == 0) choice = "n"
-      else                   choice = choice.to_lowercase
+      loop
+        local cmd : String
+        if (options//grep)
+          cmd = which{ auto_response || Console.input( "Save matches (y/s/e/n)? " ) }
+        else
+          cmd = which{ auto_response || Console.input( "Make changes now (y/s/e/n)? " ) }
+        endIf
+        if (not cmd) cmd = ""
 
-      if (options//grep and choice == "y") choice = "s"
+        local choice = cmd.before_first(' ')
+        if (choice.count == 0) choice = "n"
+        else                   choice = choice.to_lowercase
 
-      which (choice)
-        case "y"
-          println
-          println "Applying changes..."
-          println
-          apply_changes
+        if (options//grep and choice == "y") choice = "s"
 
-        case "s"
-          local filename = cmd.after_first(' ').trimmed
-          if (filename == "") filename = "ReIDChanges.txt"
-          contingent
-            if (File(filename).exists and not auto_response)
-              necessary (Console.input(''*** A file named "$" already exists. Overwrite it (y/n)? ''(filename)).to_lowercase == "y")
-            endIf
+        which (choice)
+          case "y"
+            println
+            println "Applying changes..."
+            println
+            apply_changes
+            return
 
-            local builder = String()
+          case "s"
+            local filename = cmd.after_first(' ').trimmed
+            if (filename == "") filename = "ReIDChanges.txt"
+            contingent
+              if (File(filename).exists and not auto_response)
+                necessary (Console.input(''*** A file named "$" already exists. Overwrite it (y/n)? ''(filename)).to_lowercase == "y")
+              endIf
 
-            if (options//grep)
-              forEach (key in replacements.keys)
-                builder.println "grep $" (key)
-              endForEach
-              builder.println
-            else
-              forEach (key in replacements.keys)
-                builder.println "replace $ -> $" (key,replacements[key])
-              endForEach
-              builder.println
-            endIf
+              File( filename ).save( to_change_list )
+              println ''Saved "$". Edit as desired and then run:\nreid "$"'' (filename,filename)
+            unsatisfied
+              println "Save aborted."
+            endContingent
+            return
 
-            builder.println (forEach in file_changes)
-            File( filename ).save( builder )
-            println ''Saved "$". Edit as desired and then run:\nreid "$"'' (filename,filename)
-          unsatisfied
-            println "Save aborted."
-          endContingent
-        others
-          println "No changes made."
-          System.exit 1
-      endWhich
+          case "e"
+            if (edit_changes) return
+            # Editing failed (e.g. Vim not installed); re-run the confirmation prompt.
+            println
+
+          others
+            println "No changes made."
+            System.exit 1
+        endWhich
+      endLoop
+
+    method to_change_list->String
+      # Serializes the pending changes in the format accepted by 'reid <filename>'.
+      local builder = String()
+
+      if (options//grep)
+        forEach (key in replacements.keys)
+          builder.println "grep $" (key)
+        endForEach
+        builder.println
+      else
+        forEach (key in replacements.keys)
+          builder.println "replace $ -> $" (key,replacements[key])
+        endForEach
+        builder.println
+      endIf
+
+      builder.println (forEach in file_changes)
+      return builder
+
+    method edit_changes->Logical
+      # Saves the pending changes to a temporary file, opens it in Vim, and then
+      # loads and previews the edited result as if 'reid <tempfile>' had been run.
+      # Returns false if editing could not be performed.
+      if (not System.find_executable("vim"))
+        Console.error.println "*** ERROR: 'vim' is not installed or is not on the system PATH. ***"
+        return false
+      endIf
+
+      local temp_folder : String
+      if (System.is_windows) temp_folder = System.env//TEMP || System.env//TMP || "."
+      else                   temp_folder = System.env//TMPDIR || "/tmp"
+      local temp_file = File( temp_folder ) / "ReIDChanges-$.txt" (System.time_ms)
+
+      if (not temp_file.save(to_change_list))
+        Console.error.println ''*** ERROR: Unable to write temporary file "$". ***'' (temp_file)
+        return false
+      endIf
+
+      local exit_code = System.run( "vim $" (temp_file.esc) )
+      if (exit_code == -1 or not temp_file.exists)
+        Console.error.println "*** ERROR: Unable to launch 'vim'. ***"
+        temp_file.delete
+        return false
+      endIf
+
+      local edited : Changes
+      try
+        edited = Changes( temp_file, options )
+      catch (err:Error)
+        Console.error.println "*** ERROR: $ ***" (err)
+        temp_file.delete
+        return false
+      endTry
+      temp_file.delete
+
+      # A restarted 'reid <file>' is never in --grep mode; the loaded list is
+      # previewed and applied as a change list.
+      options//grep = false
+
+      println
+      edited.preview_and_apply
+      return true
 
 endClass
 
