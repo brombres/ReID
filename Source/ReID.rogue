@@ -666,8 +666,6 @@ class Changes
                  |  y            - Indicated changes will be performed.
                  |  e            - Edit the changes in Vim, then review and apply the result.
                  |  s [filepath] - Save changes to a file which can be edited and applied later.
-                 |                 desired, deleting or modifying listed changes, and then run e.g.:
-                 |                 reid ReIDChanges.txt
                  |  n            - No changes performed.
                  |
                  |*** CAUTION: Consider backing up listed files before proceeding. ***
