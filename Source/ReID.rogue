@@ -657,22 +657,17 @@ class Changes
 
       if (options//grep)
         println @|Review the matching lines above and then choose whether to save or not.
-                 |  y            - Save changes to default filepath "ReIDChanges.txt". Then edit as
-                 |                 desired, deleting or modifying listed lines, and then run e.g.:
-                 |                 reid ReIDChanges.txt
-                 |  s filepath   - Save changes to named filepath. Then edit as desired, deleting
-                 |                 or modifying listed lines, and then run e.g.
-                 |                 reid ReIDChanges.txt
                  |  e            - Edit the matches in Vim, then review and apply the result.
+                 |  s [filepath] - Save matches to a file which can be edited and applied later.
                  |  n            - No save performed.
                  |
       else
         println @|Review the changes above and then choose whether to proceed with changes (y/s/e/n):
                  |  y            - Indicated changes will be performed.
-                 |  s [filepath] - Save changes to filepath (default: "ReIDChanges.txt"). Then edit as
+                 |  e            - Edit the changes in Vim, then review and apply the result.
+                 |  s [filepath] - Save changes to a file which can be edited and applied later.
                  |                 desired, deleting or modifying listed changes, and then run e.g.:
                  |                 reid ReIDChanges.txt
-                 |  e            - Edit the changes in Vim, then review and apply the result.
                  |  n            - No changes performed.
                  |
                  |*** CAUTION: Consider backing up listed files before proceeding. ***
@@ -682,9 +677,9 @@ class Changes
       loop
         local cmd : String
         if (options//grep)
-          cmd = which{ auto_response || Console.input( "Save matches (y/s/e/n)? " ) }
+          cmd = which{ auto_response || Console.input( "Edit or save matches (e/s/n)? " ) }
         else
-          cmd = which{ auto_response || Console.input( "Make changes now (y/s/e/n)? " ) }
+          cmd = which{ auto_response || Console.input( "Make changes now (y/e/s/n)? " ) }
         endIf
         if (not cmd) cmd = ""
 
